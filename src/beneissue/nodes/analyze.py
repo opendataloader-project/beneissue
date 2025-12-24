@@ -43,14 +43,10 @@ def _build_analyze_prompt(state: IssueState) -> str:
     config = load_config()
     project_desc = config.project.description or f"Repository: {state['repo']}"
 
-    # Get codebase structure from state (set by intake node)
-    codebase_structure = state.get(
-        "codebase_structure", "Explore the codebase to understand the structure."
-    )
-
+    # Claude Code will explore the codebase directly
     system_context = ANALYZE_PROMPT.format(
         project_description=project_desc,
-        codebase_structure=codebase_structure,
+        codebase_structure="Use Glob and Read tools to explore the codebase.",
     )
 
     return f"""{system_context}
@@ -237,13 +233,10 @@ def _fallback_analyze_api(state: IssueState, config) -> dict:
     llm = ChatAnthropic(model=config.models.analyze)
 
     project_desc = config.project.description or f"Repository: {state['repo']}"
-    codebase_structure = state.get(
-        "codebase_structure", "Codebase structure not available."
-    )
 
     system_prompt = ANALYZE_PROMPT.format(
         project_description=project_desc,
-        codebase_structure=codebase_structure,
+        codebase_structure="Codebase structure not available (API fallback mode).",
     )
 
     response = llm.with_structured_output(AnalyzeResult).invoke(

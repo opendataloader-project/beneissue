@@ -16,7 +16,6 @@ class IssueState(TypedDict, total=False):
 
     # === Context (fetched during intake) ===
     existing_issues: list[dict]  # For duplicate detection
-    codebase_structure: str  # Directory/file tree for analyze
 
     # === Rate limiting ===
     daily_run_count: int
