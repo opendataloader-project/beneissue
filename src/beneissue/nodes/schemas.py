@@ -34,3 +34,12 @@ class AnalyzeResult(BaseModel):
     story_points: Literal[1, 2, 3, 5, 8]
     labels: list[str]  # bug, enhancement, documentation
     comment_draft: Optional[str] = None  # For manual-required or comment-only
+
+
+class FixResult(BaseModel):
+    """Fix node output schema from Claude Code."""
+
+    success: bool
+    title: str  # Commit message title (50 chars max, imperative mood)
+    description: str  # What was changed and why
+    error: Optional[str] = None  # Error message if success is false

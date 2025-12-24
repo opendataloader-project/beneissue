@@ -1,6 +1,8 @@
 """Fix node implementation using Claude Code."""
 
+import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -8,6 +10,7 @@ from pathlib import Path
 from langsmith import traceable
 
 from beneissue.graph.state import IssueState
+from beneissue.nodes.schemas import FixResult
 
 # Load prompt from file
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "fix.md"
@@ -15,6 +18,26 @@ FIX_PROMPT = PROMPT_PATH.read_text()
 
 # Timeout for Claude Code execution (5 minutes)
 CLAUDE_CODE_TIMEOUT = 300
+
+
+def _parse_fix_output(output: str) -> FixResult | None:
+    """Parse Claude Code output for FixResult JSON."""
+    # Try markdown code block first, then raw JSON
+    patterns = [
+        r"```json\s*(\{[^`]*\})\s*```",  # ```json {...} ```
+        r'(\{\s*"success"\s*:[^}]*\})',  # Raw JSON with "success" key
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, output, re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group(1))
+                return FixResult(**data)
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+    return None
 
 
 def _clone_repo(repo: str, target_dir: str) -> bool:
@@ -60,40 +83,24 @@ def _run_git(repo_path: str, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def _create_pr(repo_path: str, state: IssueState) -> str | None:
+def _create_pr(
+    repo_path: str, state: IssueState, fix_result: FixResult | None
+) -> str | None:
     """Create a PR using gh CLI and return the PR URL."""
     issue_number = state["issue_number"]
-    issue_title = state["issue_title"]
-    analysis_summary = state.get("analysis_summary", "No analysis available")
 
-    # Get changed files
-    diff_result = _run_git(repo_path, "diff", "--name-only", "HEAD")
-    changed_files = diff_result.stdout.decode().strip()
-
-    # Build PR body
-    pr_body = f"""## Summary
-
-Automated fix for #{issue_number}: **{issue_title}**
-
-## Analysis
-
-{analysis_summary}
-
-## Changed Files
-
-```
-{changed_files}
-```
-
-## Test Plan
-
-- [ ] Tests pass
-- [ ] Build succeeds
-- [ ] Manual verification
-
----
-Closes #{issue_number}
-"""
+    # Use fix result or fall back to defaults
+    pr_title = (
+        fix_result.title
+        if fix_result and fix_result.title
+        else f"Fix #{issue_number}: {state['issue_title']}"
+    )
+    pr_description = (
+        fix_result.description
+        if fix_result and fix_result.description
+        else state.get("analysis_summary", "No analysis available")
+    )
+    pr_body = f"{pr_description}\n\n---\nCloses #{issue_number}"
 
     # Create PR using gh CLI
     result = subprocess.run(
@@ -102,7 +109,7 @@ Closes #{issue_number}
             "pr",
             "create",
             "--title",
-            f"Fix #{issue_number}: {issue_title}",
+            pr_title,
             "--body",
             pr_body,
             "--base",
@@ -171,6 +178,18 @@ def fix_node(state: IssueState) -> dict:
                     "labels_to_add": ["fix/manual-required"],
                 }
 
+            # Parse fix output
+            output = result.stdout.decode() if result.stdout else ""
+            fix_result = _parse_fix_output(output)
+
+            # Check if fix reported failure
+            if fix_result and not fix_result.success:
+                return {
+                    "fix_success": False,
+                    "fix_error": fix_result.error or "Fix reported failure",
+                    "labels_to_add": ["fix/manual-required"],
+                }
+
             # Check if there are changes
             status_result = _run_git(repo_path, "status", "--porcelain")
             if not status_result.stdout.decode().strip():
@@ -184,14 +203,20 @@ def fix_node(state: IssueState) -> dict:
             branch_name = f"fix/issue-{issue_number}"
             _run_git(repo_path, "checkout", "-b", branch_name)
 
+            # Build commit message from fix result or fallback
+            commit_title = (
+                fix_result.title
+                if fix_result and fix_result.title
+                else f"fix: resolve issue #{issue_number}"
+            )
+            commit_body = (
+                f"{fix_result.description}\n\n" if fix_result and fix_result.description else ""
+            )
+            commit_msg = f"{commit_title}\n\n{commit_body}Closes #{issue_number}\nCo-Authored-By: Claude <noreply@anthropic.com>"
+
             # Commit changes
             _run_git(repo_path, "add", "-A")
-            _run_git(
-                repo_path,
-                "commit",
-                "-m",
-                f"fix: resolve issue #{issue_number}\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
-            )
+            _run_git(repo_path, "commit", "-m", commit_msg)
 
             # Push branch
             push_result = _run_git(repo_path, "push", "-u", "origin", branch_name)
@@ -203,7 +228,7 @@ def fix_node(state: IssueState) -> dict:
                 }
 
             # Create PR
-            pr_url = _create_pr(repo_path, state)
+            pr_url = _create_pr(repo_path, state, fix_result)
 
             if pr_url:
                 return {
