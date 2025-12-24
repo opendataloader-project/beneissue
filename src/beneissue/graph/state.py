@@ -26,10 +26,10 @@ class IssueState(TypedDict, total=False):
     score: dict
     fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
 
-    # === Fix 결과 (v0.5.0 이후 구현) ===
-    # fix_success: bool
-    # pr_url: Optional[str]
-    # fix_error: Optional[str]
+    # === Fix 결과 ===
+    fix_success: bool
+    pr_url: Optional[str]
+    fix_error: Optional[str]
 
     # === 메타데이터 ===
     labels_to_add: list[str]

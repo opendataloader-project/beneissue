@@ -90,8 +90,62 @@ def analyze(
             typer.echo(f"Summary: {result['analysis_summary']}")
             typer.echo(f"Fix decision: {result['fix_decision']}")
 
+        if result.get("fix_success") is not None:
+            typer.echo("\n--- Fix ---")
+            if result["fix_success"]:
+                typer.echo("Fix successful!")
+                if result.get("pr_url"):
+                    typer.echo(f"PR: {result['pr_url']}")
+            else:
+                typer.echo(f"Fix failed: {result.get('fix_error', 'Unknown error')}")
+
         typer.echo(f"\nLabels applied: {result.get('labels_to_add', [])}")
         typer.echo("Actions completed on GitHub.")
+
+
+@app.command()
+def fix(
+    repo: str = typer.Argument(..., help="Repository in owner/repo format"),
+    issue: int = typer.Option(..., "--issue", "-i", help="Issue number to fix"),
+) -> None:
+    """Attempt to automatically fix a GitHub issue."""
+    setup_langsmith()
+
+    typer.echo(f"Attempting to fix issue #{issue} in {repo}...")
+    typer.echo("This will: triage → analyze → fix (if eligible) → apply labels")
+
+    result = full_graph.invoke(
+        {
+            "repo": repo,
+            "issue_number": issue,
+        }
+    )
+
+    typer.echo("\n--- Triage ---")
+    typer.echo(f"Decision: {result['triage_decision']}")
+
+    if result["triage_decision"] != "valid":
+        typer.echo(f"Reason: {result['triage_reason']}")
+        typer.echo("\nIssue not eligible for fix.")
+        return
+
+    typer.echo("\n--- Analysis ---")
+    typer.echo(f"Summary: {result['analysis_summary']}")
+    typer.echo(f"Fix decision: {result['fix_decision']}")
+
+    if result.get("fix_success") is not None:
+        typer.echo("\n--- Fix ---")
+        if result["fix_success"]:
+            typer.echo("Fix successful!")
+            if result.get("pr_url"):
+                typer.echo(f"PR created: {result['pr_url']}")
+        else:
+            typer.echo(f"Fix failed: {result.get('fix_error', 'Unknown error')}")
+    elif result["fix_decision"] != "auto_eligible":
+        typer.echo("\nIssue not eligible for auto-fix.")
+        typer.echo(f"Score: {result.get('score', {}).get('total', 'N/A')}/100")
+
+    typer.echo(f"\nLabels: {result.get('labels_to_add', [])}")
 
 
 if __name__ == "__main__":
