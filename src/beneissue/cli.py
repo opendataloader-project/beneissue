@@ -162,18 +162,12 @@ def init(
     skip_labels: bool = typer.Option(
         False, "--skip-labels", help="Skip creating GitHub labels"
     ),
-    skip_workflow: bool = typer.Option(
-        False, "--skip-workflow", help="Skip creating workflow file"
-    ),
-    skip_skill: bool = typer.Option(
-        False, "--skip-skill", help="Skip creating Claude skill files"
-    ),
 ) -> None:
     """Initialize beneissue in the current repository.
 
-    Creates:
+    Copies template files from the package to the current repository:
     - .github/workflows/beneissue-workflow.yml (GitHub Action workflow)
-    - .claude/skills/beneissue/ (Claude skill directory)
+    - .claude/skills/beneissue/ (Claude skill directory with config and test cases)
     - GitHub labels for triage and fix status
     """
     # Check if we're in a git repo
@@ -189,37 +183,17 @@ def init(
 
     typer.echo("Initializing beneissue...\n")
 
-    # Create workflow file
-    if not skip_workflow:
-        workflow_dir = Path(".github/workflows")
-        workflow_dir.mkdir(parents=True, exist_ok=True)
-        workflow_file = workflow_dir / "beneissue-workflow.yml"
-        _write_template_file(workflow_file, ".github/workflows/beneissue-workflow.yml", "workflow")
+    # Get template directory from package
+    template_dir = Path(__file__).parent / "template"
+    if not template_dir.exists():
+        typer.echo(f"Error: Template directory not found: {template_dir}")
+        raise typer.Exit(1)
 
-    # Create Claude skill directory
-    if not skip_skill:
-        skill_dir = Path(".claude/skills/beneissue")
-        skill_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create subdirectories
-        (skill_dir / "prompts").mkdir(exist_ok=True)
-        cases_dir = skill_dir / "tests" / "cases"
-        cases_dir.mkdir(parents=True, exist_ok=True)
-
-        # Write skill files
-        _write_template_file(skill_dir / "SKILL.md", ".claude/skills/SKILL.md", "skill definition")
-        _write_template_file(
-            skill_dir / "beneissue-config.yml", ".claude/skills/beneissue-config.yml", "skill config"
-        )
-
-        # Write example test cases
-        test_case_templates = Path(__file__).parent / "templates" / ".claude" / "skills" / "tests" / "cases"
-        if test_case_templates.exists():
-            for case_file in test_case_templates.glob("*.json"):
-                dest_file = cases_dir / case_file.name
-                if not dest_file.exists():
-                    dest_file.write_text(case_file.read_text())
-                    typer.echo(f"Created: {dest_file}")
+    # Copy only config directories (.claude/ and .github/) to current directory
+    for config_dir in [".claude", ".github"]:
+        src_dir = template_dir / config_dir
+        if src_dir.exists():
+            _copy_template_tree(src_dir, Path(".") / config_dir)
 
     # Create labels
     if not skip_labels:
@@ -260,29 +234,31 @@ def init(
     typer.echo("\n3. Create an issue to test!")
 
 
-def _write_template_file(
-    dest_file: Path, template_name: str, file_type: str
-) -> None:
-    """Write a template file to the destination, with overwrite confirmation."""
-    if dest_file.exists():
-        overwrite = typer.confirm(
-            f"{dest_file} already exists. Overwrite?", default=False
-        )
-        if not overwrite:
-            typer.echo(f"Skipping {file_type} file.")
-            return
+def _copy_template_tree(src_dir: Path, dest_dir: Path) -> None:
+    """Recursively copy template directory to destination, with overwrite confirmation."""
+    for src_path in src_dir.rglob("*"):
+        if src_path.is_dir():
+            continue
 
-    # Read template from package (templates/ is inside src/beneissue/)
-    template_path = Path(__file__).parent / "templates" / template_name
+        # Calculate relative path and destination
+        rel_path = src_path.relative_to(src_dir)
+        dest_path = dest_dir / rel_path
 
-    if template_path.exists():
-        content = template_path.read_text()
-    else:
-        typer.echo(f"Warning: Template {template_name} not found, skipping.")
-        return
+        # Check if file exists and ask for confirmation
+        if dest_path.exists():
+            overwrite = typer.confirm(
+                f"{dest_path} already exists. Overwrite?", default=False
+            )
+            if not overwrite:
+                typer.echo(f"Skipped: {dest_path}")
+                continue
 
-    dest_file.write_text(content)
-    typer.echo(f"Created: {dest_file}")
+        # Create parent directories if needed
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Copy file
+        dest_path.write_bytes(src_path.read_bytes())
+        typer.echo(f"Created: {dest_path}")
 
 
 @app.command("labels")
@@ -388,12 +364,15 @@ def labels_sync(
     typer.echo("\nLabels synced.")
 
 
-# Default test cases directory
-TEST_CASES_DIR = ".claude/skills/beneissue/tests/cases"
+# Default test cases directory (relative to project root)
+TEST_CASES_SUBDIR = ".claude/skills/beneissue/tests/cases"
 
 
 @app.command()
 def test(
+    path: Optional[str] = typer.Option(
+        None, "--path", "-p", help="Project root path (default: current directory)"
+    ),
     case: Optional[str] = typer.Option(
         None, "--case", "-c", help="Run specific test case by name"
     ),
@@ -407,14 +386,19 @@ def test(
     """Run policy tests from test cases in the repository.
 
     Test cases should be JSON files in .claude/skills/beneissue/tests/cases/
+
+    Examples:
+        beneissue test                           # Run tests in current directory
+        beneissue test --path examples/calculator  # Run tests in example project
     """
     setup_langsmith()
 
-    cases_dir = Path(TEST_CASES_DIR)
+    project_root = Path(path) if path else Path(".")
+    cases_dir = project_root / TEST_CASES_SUBDIR
     if not cases_dir.exists():
         typer.echo(f"Error: Test cases directory not found: {cases_dir}")
         typer.echo("\nCreate test cases in JSON format:")
-        typer.echo(f"  mkdir -p {TEST_CASES_DIR}")
+        typer.echo(f"  mkdir -p {TEST_CASES_SUBDIR}")
         typer.echo("  # Add JSON files like triage-valid-bug.json")
         raise typer.Exit(1)
 

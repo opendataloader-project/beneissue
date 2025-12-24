@@ -1,0 +1,47 @@
+# beneissue configuration
+# Location: .claude/skills/beneissue/beneissue-config.yml
+version: "1.0"
+
+# AI model settings
+# Note: analyze and fix use Claude Code CLI (no model config needed)
+models:
+  triage: claude-haiku-4-5    # Fast triage (~$0.02/call)
+
+# Auto-fix scoring
+scoring:
+  threshold: 80  # Score >= this triggers auto-fix
+  # Adjustment guide:
+  # - Conservative: 80
+  # - Standard: 70
+  # - Aggressive: 60
+  criteria:
+    scope: { weight: 30 }         # Change scope and complexity
+    risk: { weight: 30 }          # Failure risk level
+    verifiability: { weight: 25 } # Verification capability
+    clarity: { weight: 15 }       # Requirement clarity
+
+# Team settings (for assignee recommendation)
+team:
+  - github_id: ""
+    available: true
+    specialties: []
+  # - github_id: "alice"
+  #   available: true
+  #   specialties: ["frontend", "react"]
+  # - github_id: "bob"
+  #   available: true
+  #   specialties: ["backend", "python"]
+
+# Daily limits (cost control)
+limits:
+  daily:
+    triage: 50   # ~$1/day with Haiku
+    analyze: 20  # ~$2-10/day with Sonnet
+    fix: 5       # ~$5-25/day with Claude Code
+
+# Observability
+observability:
+  langsmith:
+    enabled: true
+    project: "beneissue"
+
