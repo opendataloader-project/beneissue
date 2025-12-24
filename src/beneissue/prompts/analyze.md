@@ -19,8 +19,8 @@ Analyze GitHub issue and determine fix approach.
 
 All true → **auto_eligible**, otherwise → **manual_required**
 
-## Team (from .claude/skills/beneissue/beneissue-config.yml)
-Read the config file to find available team members and their specialties for assignee selection.
+## Assignee (from .claude/skills/beneissue/beneissue-config.yml)
+Read config. Always assign: best specialty match, or first available.
 
 ## Output (JSON only)
 
@@ -33,7 +33,7 @@ Read the config file to find available team members and their specialties for as
   "priority": "P0 | P1 | P2",
   "story_points": 1 | 2 | 3 | 5 | 8,
   "labels": ["bug"],
-  "assignee": "github_id or null",
+  "assignee": "github_id (required - always assign someone)",
   "comment_draft": "null, or response if comment_only"
 }}
 ```

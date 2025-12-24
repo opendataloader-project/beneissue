@@ -9,6 +9,6 @@
   "expected": {
     "decision": "valid",
     "fix_decision": "comment_only",
-    "assignee": "pm-jane"
+    "assignee_one_of": ["pm-jane", "dev-john"]
   }
 }
