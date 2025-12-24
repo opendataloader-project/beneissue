@@ -1,0 +1,11 @@
+{
+  "name": "needs_info_missing_details",
+  "description": "Vague issue without reproduction steps should ask for clarification",
+  "input": {
+    "title": "It doesn't work",
+    "body": "I tried using this library but it doesn't work. Please help."
+  },
+  "expected": {
+    "decision": "needs_info"
+  }
+}

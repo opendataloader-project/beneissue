@@ -30,3 +30,15 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "ai: marks tests that require AI API calls (may be slow/costly)",
+    "triage: marks triage-related tests",
+    "analyze: marks analyze-related tests",
+]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

@@ -1,0 +1,11 @@
+{
+  "name": "duplicate_table_extraction",
+  "description": "Issue about table extraction - may be duplicate of #15 or need more info",
+  "input": {
+    "title": "Tables are not extracted correctly from PDF",
+    "body": "When I try to extract tables from my PDF documents, the columns are all mixed up and the data is not properly aligned.\n\nThis makes the extracted data unusable for my analysis."
+  },
+  "expected": {
+    "acceptable_decisions": ["duplicate", "needs_info"]
+  }
+}

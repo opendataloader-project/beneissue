@@ -1,0 +1,14 @@
+{
+  "triage_decision": "needs_info",
+  "triage_reason": "This appears to be related to the known issue #15 (open) about table extraction producing incorrect column alignment. However, the report lacks critical information needed to investigate and verify the fix: no sample PDF document is provided or linked. To reproduce and resolve table extraction issues, the development team needs an actual PDF file that demonstrates the problem. The user should provide either a sample PDF attachment, a link to a problematic document, or clear reproduction steps with a specific document they can share.",
+  "duplicate_of": null,
+  "triage_questions": [
+    "Can you provide a sample PDF file (or a link to one) that demonstrates the table extraction issue?",
+    "Which output format are you using (JSON, Markdown, or HTML)?",
+    "Can you describe the expected vs. actual table structure in the extracted output?",
+    "Are there specific PDF characteristics (e.g., complex nested tables, rotated text, merged cells) that might be relevant?"
+  ],
+  "labels_to_add": [
+    "triage/needs-info"
+  ]
+}

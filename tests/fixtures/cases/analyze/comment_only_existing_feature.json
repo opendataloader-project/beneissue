@@ -1,0 +1,14 @@
+{
+  "name": "comment_only_existing_feature",
+  "description": "User requests feature that already exists - AI should detect skip_empty parameter",
+  "input": {
+    "title": "Add option to skip empty pages",
+    "body": "## Feature Request\n\nWhen processing PDFs, I want to skip pages that have no content.\n\nCurrently I have to filter them out manually after processing.\n\n## Use Case\nProcessing scanned documents that have blank separator pages.",
+    "labels": [],
+    "comments": []
+  },
+  "expected": {
+    "acceptable_decisions": ["comment_only", "auto_eligible", "manual_required"],
+    "summary_contains": ["skip_empty"]
+  }
+}
