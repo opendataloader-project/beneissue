@@ -76,19 +76,21 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
     return None
 
 
-def _run_analysis(repo_path: str, prompt: str, config) -> dict:
+def _run_analysis(repo_path: str, prompt: str, config, *, verbose: bool = False) -> dict:
     """Run Claude Code analysis on a repository path."""
     try:
+        cmd = [
+            "claude",
+            "-p",
+            prompt,
+            "--allowedTools",
+            "Read,Glob,Grep",
+        ]
+        if verbose:
+            cmd.append("--verbose")
+
         result = subprocess.run(
-            [
-                "claude",
-                "-p",
-                prompt,
-                "--allowedTools",
-                "Read,Glob,Grep",
-                "--output-format",
-                "text",
-            ],
+            cmd,
             capture_output=True,
             timeout=CLAUDE_CODE_TIMEOUT,
             cwd=repo_path,
@@ -105,9 +107,7 @@ def _run_analysis(repo_path: str, prompt: str, config) -> dict:
         if response:
             return _build_result(response, config)
         else:
-            return _fallback_analyze(
-                f"Failed to parse analysis output: {stdout[:200]}"
-            )
+            return _fallback_analyze(f"Failed to parse analysis output: {stdout[:200]}")
 
     except subprocess.TimeoutExpired:
         return _fallback_analyze(
@@ -126,10 +126,11 @@ def analyze_node(state: IssueState) -> dict:
     """Analyze an issue using Claude Code CLI."""
     config = load_config()
     prompt = _build_analyze_prompt(state)
+    verbose = state.get("verbose", False)
 
     # Use project_root if provided (for testing), otherwise clone
     if state.get("project_root"):
-        return _run_analysis(str(state["project_root"]), prompt, config)
+        return _run_analysis(str(state["project_root"]), prompt, config, verbose=verbose)
 
     # Create temporary directory for the repo
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -139,7 +140,7 @@ def analyze_node(state: IssueState) -> dict:
         if not _clone_repo(state["repo"], repo_path):
             return _fallback_analyze("Failed to clone repository")
 
-        return _run_analysis(repo_path, prompt, config)
+        return _run_analysis(repo_path, prompt, config, verbose=verbose)
 
 
 def _build_result(response: AnalyzeResult, config) -> dict:

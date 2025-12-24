@@ -518,6 +518,7 @@ def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -
         "issue_labels": [],
         "issue_author": "test-user",
         "existing_issues": input_data.get("existing_issues", []),
+        "verbose": verbose,
     }
 
     try:
