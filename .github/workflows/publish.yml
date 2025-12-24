@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Test version (e.g., 0.1.0)'
+        required: true
+        default: '0.0.1-test'
+      dry_run:
+        description: 'Dry run (build only, no publish)'
+        type: boolean
+        default: true
 
 jobs:
   publish:
@@ -18,13 +28,31 @@ jobs:
           version: "latest"
 
       - name: Set version from tag
+        if: github.event_name == 'push'
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           sed -i "s/version = \"0.0.0\"/version = \"$VERSION\"/" pyproject.toml
           echo "Building version: $VERSION"
 
+      - name: Set version from input
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION=${{ inputs.version }}
+          sed -i "s/version = \"0.0.0\"/version = \"$VERSION\"/" pyproject.toml
+          echo "Building version: $VERSION"
+
       - name: Build package
-        run: uv build
+        run: |
+          uv build
+          ls -la dist/
 
       - name: Publish to PyPI
+        if: github.event_name == 'push' || inputs.dry_run == false
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Dry run summary
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
+        run: |
+          echo "🧪 Dry run complete - package built but not published"
+          echo "Files in dist/:"
+          ls -la dist/
