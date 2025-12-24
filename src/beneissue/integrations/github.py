@@ -1,15 +1,19 @@
 """GitHub API integration."""
 
 import os
+from datetime import datetime, timezone
+from typing import Optional
 
 from github import Github
 
 
 def get_github_client() -> Github:
     """Get authenticated GitHub client."""
-    token = os.environ.get("BENEISSUE_TOKEN")
+    token = os.environ.get("BENEISSUE_TOKEN") or os.environ.get("GITHUB_TOKEN")
     if not token:
-        raise ValueError("BENEISSUE_TOKEN environment variable is required")
+        raise ValueError(
+            "BENEISSUE_TOKEN or GITHUB_TOKEN environment variable is required"
+        )
     return Github(token)
 
 
@@ -25,3 +29,139 @@ def get_issue(repo: str, issue_number: int) -> dict:
         "issue_labels": [label.name for label in issue.labels],
         "issue_author": issue.user.login,
     }
+
+
+def get_existing_issues(
+    repo: str,
+    limit: int = 50,
+    exclude_issue: Optional[int] = None,
+) -> list[dict]:
+    """Fetch existing issues for duplicate detection.
+
+    Args:
+        repo: Repository in owner/repo format
+        limit: Maximum number of issues to fetch
+        exclude_issue: Issue number to exclude (current issue)
+
+    Returns:
+        List of issues with number, title, state, labels
+    """
+    gh = get_github_client()
+    repository = gh.get_repo(repo)
+
+    issues = []
+    for issue in repository.get_issues(state="all", sort="created", direction="desc"):
+        if len(issues) >= limit:
+            break
+        if exclude_issue and issue.number == exclude_issue:
+            continue
+        if issue.pull_request:
+            continue  # Skip PRs
+
+        issues.append(
+            {
+                "number": issue.number,
+                "title": issue.title,
+                "state": issue.state,
+                "labels": [label.name for label in issue.labels],
+            }
+        )
+
+    return issues
+
+
+def format_existing_issues(issues: list[dict]) -> str:
+    """Format existing issues for LLM prompt context.
+
+    Args:
+        issues: List of issue dicts from get_existing_issues()
+
+    Returns:
+        Formatted string for prompt context
+    """
+    if not issues:
+        return "No existing issues found."
+
+    lines = []
+    for issue in issues:
+        state = "open" if issue["state"] == "open" else "closed"
+        labels = ", ".join(issue["labels"]) if issue["labels"] else ""
+        label_str = f" [{labels}]" if labels else ""
+        lines.append(f"#{issue['number']} ({state}){label_str}: {issue['title']}")
+
+    return "\n".join(lines)
+
+
+def get_daily_run_count(repo: str, workflow_name: str) -> int:
+    """Get today's successful workflow run count.
+
+    Args:
+        repo: Repository in owner/repo format
+        workflow_name: Name of the workflow file (e.g., "beneissue-workflow.yml")
+
+    Returns:
+        Number of successful runs today
+    """
+    gh = get_github_client()
+    repository = gh.get_repo(repo)
+
+    today = datetime.now(timezone.utc).date()
+    count = 0
+
+    try:
+        workflow = repository.get_workflow(workflow_name)
+        runs = workflow.get_runs(status="success")
+
+        for run in runs:
+            if run.created_at.date() == today:
+                count += 1
+            elif run.created_at.date() < today:
+                break  # Runs are sorted by date, stop when we hit yesterday
+    except Exception:
+        # Workflow might not exist yet
+        pass
+
+    return count
+
+
+def add_labels(repo: str, issue_number: int, labels: list[str]) -> None:
+    """Add labels to an issue."""
+    if not labels:
+        return
+
+    gh = get_github_client()
+    repository = gh.get_repo(repo)
+    issue = repository.get_issue(issue_number)
+    issue.add_to_labels(*labels)
+
+
+def remove_labels(repo: str, issue_number: int, labels: list[str]) -> None:
+    """Remove labels from an issue."""
+    if not labels:
+        return
+
+    gh = get_github_client()
+    repository = gh.get_repo(repo)
+    issue = repository.get_issue(issue_number)
+
+    for label in labels:
+        try:
+            issue.remove_from_labels(label)
+        except Exception:
+            pass  # Label might not exist
+
+
+def post_comment(repo: str, issue_number: int, body: str) -> None:
+    """Post a comment on an issue."""
+    gh = get_github_client()
+    repository = gh.get_repo(repo)
+    issue = repository.get_issue(issue_number)
+    issue.create_comment(body)
+
+
+def close_issue(repo: str, issue_number: int, reason: str = "not_planned") -> None:
+    """Close an issue with a reason."""
+    gh = get_github_client()
+    repository = gh.get_repo(repo)
+    issue = repository.get_issue(issue_number)
+    issue.edit(state="closed", state_reason=reason)

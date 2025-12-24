@@ -14,6 +14,11 @@ DEFAULT_ANALYZE_MODEL = "claude-sonnet-4"
 DEFAULT_FIX_MODEL = "claude-sonnet-4"
 DEFAULT_AUTO_FIX_MIN_SCORE = 80
 
+# Daily limits (cost control)
+DEFAULT_DAILY_LIMIT_TRIAGE = 20  # ~$0.02/call with Haiku
+DEFAULT_DAILY_LIMIT_ANALYZE = 10  # ~$0.10-0.50/call with Sonnet
+DEFAULT_DAILY_LIMIT_FIX = 3  # ~$1-5/call with Claude Code
+
 # Config file path
 CONFIG_PATH = ".claude/skills/beneissue/beneissue-config.yml"
 
@@ -36,10 +41,20 @@ class AutoFixConfig:
 
 
 @dataclass
+class DailyLimitsConfig:
+    """Daily rate limits for cost control."""
+
+    triage: int = DEFAULT_DAILY_LIMIT_TRIAGE
+    analyze: int = DEFAULT_DAILY_LIMIT_ANALYZE
+    fix: int = DEFAULT_DAILY_LIMIT_FIX
+
+
+@dataclass
 class PolicyConfig:
     """Policy configuration."""
 
     auto_fix: AutoFixConfig = field(default_factory=AutoFixConfig)
+    daily_limits: DailyLimitsConfig = field(default_factory=DailyLimitsConfig)
 
 
 @dataclass
@@ -97,12 +112,25 @@ def load_config(repo_path: Optional[Path] = None) -> BeneissueConfig:
             config.models.fix = data["models"].get("fix", DEFAULT_FIX_MODEL)
 
         # Parse policy
-        if "policy" in data and "auto_fix" in data["policy"]:
-            auto_fix = data["policy"]["auto_fix"]
-            config.policy.auto_fix.enabled = auto_fix.get("enabled", True)
-            config.policy.auto_fix.min_score = auto_fix.get(
-                "min_score", DEFAULT_AUTO_FIX_MIN_SCORE
-            )
+        if "policy" in data:
+            if "auto_fix" in data["policy"]:
+                auto_fix = data["policy"]["auto_fix"]
+                config.policy.auto_fix.enabled = auto_fix.get("enabled", True)
+                config.policy.auto_fix.min_score = auto_fix.get(
+                    "min_score", DEFAULT_AUTO_FIX_MIN_SCORE
+                )
+
+            if "daily_limits" in data["policy"]:
+                limits = data["policy"]["daily_limits"]
+                config.policy.daily_limits.triage = limits.get(
+                    "triage", DEFAULT_DAILY_LIMIT_TRIAGE
+                )
+                config.policy.daily_limits.analyze = limits.get(
+                    "analyze", DEFAULT_DAILY_LIMIT_ANALYZE
+                )
+                config.policy.daily_limits.fix = limits.get(
+                    "fix", DEFAULT_DAILY_LIMIT_FIX
+                )
 
     # Override with environment variables
     if env_triage := os.environ.get("BENEISSUE_MODEL_TRIAGE"):

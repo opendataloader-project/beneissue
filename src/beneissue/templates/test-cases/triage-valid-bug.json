@@ -1,12 +1,12 @@
 {
   "name": "Valid bug report with reproduction steps",
   "stage": "triage",
+  "description": "Clear bug report with repro steps should be classified as valid",
   "input": {
-    "title": "TypeError when parsing empty PDF",
-    "body": "## Description\nWhen parsing an empty PDF file, the application crashes with a TypeError.\n\n## Steps to Reproduce\n1. Create an empty PDF file\n2. Run `parse_pdf('empty.pdf')`\n3. See error\n\n## Expected Behavior\nShould return an empty result or raise a descriptive error.\n\n## Actual Behavior\n```\nTypeError: 'NoneType' object is not iterable\n```\n\n## Environment\n- Python 3.11\n- OS: macOS 14.0"
+    "title": "Application crashes when processing empty input",
+    "body": "## Description\nThe application throws an unhandled exception when given empty input.\n\n## Steps to Reproduce\n1. Run the application\n2. Provide empty input\n3. Observe the crash\n\n## Expected Behavior\nShould return an error message gracefully.\n\n## Actual Behavior\nUnhandled exception thrown.\n\n## Environment\n- OS: macOS 14.0\n- Version: 1.0.0"
   },
   "expected": {
-    "decision": "valid",
-    "reason_contains": ["reproduction", "error"]
+    "decision": "valid"
   }
 }

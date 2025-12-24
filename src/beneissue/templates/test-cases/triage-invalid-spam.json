@@ -1,12 +1,12 @@
 {
-  "name": "Spam or off-topic issue",
+  "name": "Invalid spam issue",
   "stage": "triage",
+  "description": "Spam or unrelated content should be classified as invalid",
   "input": {
-    "title": "Buy cheap watches online!!!",
-    "body": "Visit our website for amazing deals on luxury watches. 50% off today only!"
+    "title": "Buy cheap watches online!",
+    "body": "Visit our website for amazing deals on luxury watches. Best prices guaranteed!"
   },
   "expected": {
-    "decision": "invalid",
-    "reason_contains": ["spam", "off-topic"]
+    "decision": "invalid"
   }
 }

@@ -14,8 +14,14 @@ project:
 #   triage: claude-haiku-4-5
 #   analyze: claude-sonnet-4
 
-# Auto-fix policy (optional)
+# Policy settings (optional)
 # policy:
 #   auto_fix:
 #     enabled: true
 #     min_score: 80  # Minimum score for auto-fix (0-100)
+#
+#   # Daily limits for cost control
+#   daily_limits:
+#     triage: 20   # ~$0.02/call (Haiku)
+#     analyze: 10  # ~$0.10-0.50/call (Sonnet + Claude Code)
+#     fix: 3       # ~$1-5/call (Claude Code full)

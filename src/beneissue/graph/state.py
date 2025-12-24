@@ -14,6 +14,14 @@ class IssueState(TypedDict, total=False):
     issue_labels: list[str]
     issue_author: str
 
+    # === Context (fetched during intake) ===
+    existing_issues: list[dict]  # For duplicate detection
+    codebase_structure: str  # Directory/file tree for analyze
+
+    # === Rate limiting ===
+    daily_run_count: int
+    daily_limit_exceeded: bool
+
     # === Triage 결과 ===
     triage_decision: Literal["valid", "invalid", "duplicate", "needs_info"]
     triage_reason: str

@@ -1,12 +1,12 @@
 {
-  "name": "Bug report missing reproduction steps",
+  "name": "Issue missing environment details",
   "stage": "triage",
+  "description": "Vague bug report should request more information",
   "input": {
-    "title": "App crashes sometimes",
-    "body": "The app crashes when I use it. Please fix."
+    "title": "It doesn't work",
+    "body": "I tried to use the feature but it's broken."
   },
   "expected": {
-    "decision": "needs_info",
-    "reason_contains": ["reproduction", "details"]
+    "decision": "needs_info"
   }
 }

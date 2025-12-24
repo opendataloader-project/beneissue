@@ -36,7 +36,7 @@ class TestLoadConfig:
             config_dir = Path(tmpdir) / ".claude" / "skills" / "beneissue"
             config_dir.mkdir(parents=True)
 
-            config_file = config_dir / "beneissue.yml"
+            config_file = config_dir / "beneissue-config.yml"
             config_file.write_text("""
 version: "1.0"
 project:
@@ -67,7 +67,7 @@ policy:
             config_dir = Path(tmpdir) / ".claude" / "skills" / "beneissue"
             config_dir.mkdir(parents=True)
 
-            config_file = config_dir / "beneissue.yml"
+            config_file = config_dir / "beneissue-config.yml"
             config_file.write_text("""
 version: "1.0"
 models:
@@ -90,7 +90,7 @@ models:
             config_dir = Path(tmpdir) / ".claude" / "skills" / "beneissue"
             config_dir.mkdir(parents=True)
 
-            config_file = config_dir / "beneissue.yml"
+            config_file = config_dir / "beneissue-config.yml"
             config_file.write_text("""
 version: "1.0"
 project:

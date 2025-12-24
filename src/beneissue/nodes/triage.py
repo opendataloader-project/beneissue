@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from beneissue.config import load_config
 from beneissue.graph.state import IssueState
+from beneissue.integrations.github import format_existing_issues
 from beneissue.nodes.schemas import TriageResult
 
 # Load prompt from file
@@ -27,8 +28,11 @@ def _build_triage_prompt(state: IssueState) -> str:
     config = load_config()
     project_desc = config.project.description or f"Repository: {state['repo']}"
 
-    # TODO: Fetch existing issues for duplicate detection
-    existing_issues = "No existing issues loaded."
+    # Format existing issues for duplicate detection
+    existing = state.get("existing_issues", [])
+    existing_issues = (
+        format_existing_issues(existing) if existing else "No existing issues loaded."
+    )
 
     return TRIAGE_PROMPT.format(
         project_description=project_desc,
