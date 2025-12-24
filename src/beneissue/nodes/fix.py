@@ -42,7 +42,7 @@ def _parse_fix_output(output: str) -> FixResult | None:
 
 def _clone_repo(repo: str, target_dir: str) -> bool:
     """Clone a repository to a target directory."""
-    token = os.environ.get("BENEISSUE_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    token = os.environ.get("GITHUB_TOKEN")
     if token:
         repo_url = f"https://x-access-token:{token}@github.com/{repo}.git"
     else:
@@ -120,8 +120,7 @@ def _create_pr(
         timeout=60,
         env={
             **os.environ,
-            "GH_TOKEN": os.environ.get("BENEISSUE_TOKEN")
-            or os.environ.get("GITHUB_TOKEN", ""),
+            "GH_TOKEN": os.environ.get("GITHUB_TOKEN", ""),
         },
     )
 

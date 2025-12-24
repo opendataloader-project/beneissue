@@ -21,7 +21,7 @@ CLAUDE_CODE_TIMEOUT = 180
 
 def _clone_repo(repo: str, target_dir: str) -> bool:
     """Clone a repository to a target directory."""
-    token = os.environ.get("BENEISSUE_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    token = os.environ.get("GITHUB_TOKEN")
     if token:
         repo_url = f"https://x-access-token:{token}@github.com/{repo}.git"
     else:

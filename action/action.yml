@@ -42,7 +42,7 @@ runs:
     - name: Run beneissue
       shell: bash
       env:
-        BENEISSUE_TOKEN: ${{ inputs.github-token }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         LANGCHAIN_API_KEY: ${{ inputs.langchain-api-key }}
         LANGCHAIN_TRACING_V2: ${{ inputs.langchain-api-key && 'true' || 'false' }}
