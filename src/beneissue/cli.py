@@ -10,6 +10,7 @@ import typer
 
 from beneissue.config import setup_langsmith
 from beneissue.graph.workflow import full_graph, triage_graph
+from beneissue.labels import LABELS
 
 app = typer.Typer(
     name="beneissue",
@@ -154,17 +155,6 @@ def fix(
     typer.echo(f"\nLabels: {result.get('labels_to_add', [])}")
 
 
-# Labels that beneissue uses
-BENEISSUE_LABELS = [
-    ("triage/valid", "0E8A16", "Valid issue"),
-    ("triage/invalid", "D93F0B", "Invalid issue"),
-    ("triage/duplicate", "FBCA04", "Duplicate issue"),
-    ("triage/needs-info", "5319E7", "Needs more information"),
-    ("fix/auto-eligible", "1D76DB", "Eligible for auto-fix"),
-    ("fix/manual-required", "E99695", "Manual fix required"),
-    ("fix/completed", "0E8A16", "Fix completed"),
-    ("fix/failed", "D93F0B", "Fix failed"),
-]
 
 
 @app.command()
@@ -234,7 +224,7 @@ def init(
     # Create labels
     if not skip_labels:
         typer.echo("\nCreating GitHub labels...")
-        for label_name, color, description in BENEISSUE_LABELS:
+        for label_name, label_def in LABELS.items():
             result = subprocess.run(
                 [
                     "gh",
@@ -242,9 +232,9 @@ def init(
                     "create",
                     label_name,
                     "--color",
-                    color,
+                    label_def.color,
                     "--description",
-                    description,
+                    label_def.description,
                 ],
                 capture_output=True,
                 text=True,
@@ -333,15 +323,12 @@ def labels_sync(
         for label in json.loads(result.stdout):
             existing_labels[label["name"]] = label
 
-    # Standard label names for checking unused
-    standard_names = {name for name, _, _ in BENEISSUE_LABELS}
-
     # Create or update labels
-    for label_name, color, description in BENEISSUE_LABELS:
+    for label_name, label_def in LABELS.items():
         if label_name in existing_labels:
             existing = existing_labels[label_name]
             # Check if update needed
-            if existing["color"].lower() != color.lower():
+            if existing["color"].lower() != label_def.color.lower():
                 result = subprocess.run(
                     [
                         "gh",
@@ -349,9 +336,9 @@ def labels_sync(
                         "edit",
                         label_name,
                         "--color",
-                        color,
+                        label_def.color,
                         "--description",
-                        description,
+                        label_def.description,
                     ],
                     capture_output=True,
                     text=True,
@@ -370,9 +357,9 @@ def labels_sync(
                     "create",
                     label_name,
                     "--color",
-                    color,
+                    label_def.color,
                     "--description",
-                    description,
+                    label_def.description,
                 ],
                 capture_output=True,
                 text=True,
@@ -387,7 +374,7 @@ def labels_sync(
         typer.echo("\nChecking for unused beneissue labels...")
         for name in existing_labels:
             # Only consider labels that look like beneissue labels
-            if name.startswith(("triage/", "fix/")) and name not in standard_names:
+            if name.startswith(("triage/", "fix/", "sp/", "P")) and name not in LABELS:
                 result = subprocess.run(
                     ["gh", "label", "delete", name, "--yes"],
                     capture_output=True,

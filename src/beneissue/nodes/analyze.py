@@ -10,7 +10,7 @@ from typing import Literal
 
 from langsmith import traceable
 
-from beneissue.config import get_available_assignee, load_config
+from beneissue.config import load_config
 from beneissue.graph.state import IssueState
 from beneissue.nodes.schemas import AnalyzeResult
 
@@ -43,7 +43,6 @@ def _build_analyze_prompt(state: IssueState) -> str:
     return ANALYZE_PROMPT.format(
         issue_title=state["issue_title"],
         issue_body=state["issue_body"],
-        repo=state["repo"],
     )
 
 
@@ -148,22 +147,16 @@ def _build_result(response: AnalyzeResult, config) -> dict:
     else:
         fix_decision = "comment_only"
 
-    # Get assignee based on labels (specialties)
-    assignee = get_available_assignee(config, specialties=response.labels)
-
     return {
         "analysis_summary": response.summary,
         "affected_files": response.affected_files,
         "score": response.score.model_dump(),
+        "priority": response.priority,
+        "story_points": response.story_points,
         "fix_decision": fix_decision,
         "comment_draft": response.comment_draft,
-        "assignee": assignee,
-        "labels_to_add": [
-            response.priority,
-            f"sp/{response.story_points}",
-            f"fix/{fix_decision.replace('_', '-')}",
-            *response.labels,
-        ],
+        "assignee": response.assignee,
+        "labels_to_add": [f"fix/{fix_decision.replace('_', '-')}"],
     }
 
 

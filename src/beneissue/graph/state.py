@@ -31,6 +31,8 @@ class IssueState(TypedDict, total=False):
     analysis_summary: str
     affected_files: list[str]
     score: dict
+    priority: Literal["P0", "P1", "P2"]
+    story_points: Literal[1, 2, 3, 5, 8]
     fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
     comment_draft: Optional[str]  # Comment for manual-required or comment-only
     assignee: Optional[str]  # Recommended assignee GitHub ID

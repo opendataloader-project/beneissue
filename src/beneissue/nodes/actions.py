@@ -5,7 +5,7 @@ from beneissue.integrations.github import get_github_client
 
 
 def apply_labels_node(state: IssueState) -> dict:
-    """Apply labels to the issue on GitHub."""
+    """Apply labels and assignee to the issue on GitHub."""
     gh = get_github_client()
     repo = gh.get_repo(state["repo"])
     issue = repo.get_issue(state["issue_number"])
@@ -29,6 +29,15 @@ def apply_labels_node(state: IssueState) -> dict:
             except Exception:
                 # Label might not be on issue, skip
                 pass
+
+    # Assign issue
+    assignee = state.get("assignee")
+    if assignee:
+        try:
+            issue.add_to_assignees(assignee)
+        except Exception:
+            # Assignee might not have permission, skip
+            pass
 
     return {}
 
@@ -56,13 +65,33 @@ def post_comment_node(state: IssueState) -> dict:
         comment_parts.append("## Analysis Summary")
         comment_parts.append(state["analysis_summary"])
 
+        # Priority and effort estimation
+        priority = state.get("priority")
+        story_points = state.get("story_points")
+        if priority or story_points:
+            comment_parts.append("")
+            if priority:
+                priority_desc = {"P0": "Critical", "P1": "High", "P2": "Normal"}.get(
+                    priority, priority
+                )
+                comment_parts.append(f"**Priority:** {priority} ({priority_desc})")
+            if story_points:
+                sp_desc = {
+                    1: "< 1 day",
+                    2: "1-2 days",
+                    3: "3-5 days",
+                    5: "6-10 days",
+                    8: "10+ days",
+                }.get(story_points, f"{story_points} points")
+                comment_parts.append(f"**Estimated Effort:** {story_points} SP ({sp_desc})")
+
         if state.get("affected_files"):
             comment_parts.append("\n**Affected Files:**")
             for f in state["affected_files"]:
                 comment_parts.append(f"- `{f}`")
 
-        if state.get("fix_approach"):
-            comment_parts.append(f"\n**Recommended Approach:**\n{state['fix_approach']}")
+        if state.get("assignee"):
+            comment_parts.append(f"\n**Assigned to:** @{state['assignee']}")
 
         if state.get("score"):
             score = state["score"]

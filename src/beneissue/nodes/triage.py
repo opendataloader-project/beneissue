@@ -8,25 +8,22 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from beneissue.config import load_config
 from beneissue.graph.state import IssueState
 from beneissue.integrations.github import format_existing_issues
+from beneissue.labels import get_triage_labels
 from beneissue.nodes.schemas import TriageResult
 
 # Load prompt from file
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "triage.md"
 TRIAGE_PROMPT = PROMPT_PATH.read_text()
 
-# Label mapping for triage decisions
-TRIAGE_LABELS = {
-    "valid": ["triage/valid"],
-    "invalid": ["triage/invalid"],
-    "duplicate": ["triage/duplicate"],
-    "needs_info": ["triage/needs-info"],
-}
-
 
 def _build_triage_prompt(state: IssueState) -> str:
     """Build the triage prompt with context."""
-    config = load_config()
-    project_desc = config.project.description or f"Repository: {state['repo']}"
+    # Read README from repo root
+    readme_path = Path.cwd() / "README.md"
+    if readme_path.exists():
+        readme_content = readme_path.read_text()
+    else:
+        readme_content = f"Repository: {state['repo']}\n\nNo README.md found."
 
     # Format existing issues for duplicate detection
     existing = state.get("existing_issues", [])
@@ -35,7 +32,7 @@ def _build_triage_prompt(state: IssueState) -> str:
     )
 
     return TRIAGE_PROMPT.format(
-        project_description=project_desc,
+        readme_content=readme_content,
         existing_issues=existing_issues,
     )
 
@@ -61,5 +58,5 @@ def triage_node(state: IssueState) -> dict:
         "triage_reason": response.reason,
         "duplicate_of": response.duplicate_of,
         "triage_questions": response.questions,
-        "labels_to_add": TRIAGE_LABELS.get(response.decision, []),
+        "labels_to_add": get_triage_labels().get(response.decision, []),
     }

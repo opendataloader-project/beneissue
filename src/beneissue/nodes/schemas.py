@@ -33,6 +33,7 @@ class AnalyzeResult(BaseModel):
     priority: Literal["P0", "P1", "P2"]
     story_points: Literal[1, 2, 3, 5, 8]
     labels: list[str]  # bug, enhancement, documentation
+    assignee: Optional[str] = None  # GitHub username to assign
     comment_draft: Optional[str] = None  # For manual-required or comment-only
 
 

@@ -1,24 +1,20 @@
-# Analyze Issue
-
-You are analyzing a GitHub issue for implementation planning and auto-fix eligibility.
-
-## Issue to Analyze
+Perform deep analysis for GitHub issue using the ai-issue skill.
 
 **Title**: {issue_title}
 
 **Body**:
 {issue_body}
 
-**Repository**: {repo}
-
 ## Instructions
+1. Read skill files in .claude/skills/beneissue/beneissue-config.yml
+2. Analyze codebase to identify affected files and root cause
+3. Score: Scope(0-30), Risk(0-30), Verifiability(0-25), Clarity(0-15)
+4. Action: score >= threshold → "fix/auto-eligible", else → "fix/manual-required", no code → "fix/comment-only"
+5. Select labels, priority, story_points, assignee per policies
 
-Use the beneissue skill to analyze this issue:
+## Output
 
-1. Explore the codebase using Read, Glob, and Grep tools
-2. Identify affected files
-3. Score the issue based on scoring criteria
-4. Return your analysis as JSON:
+Return your analysis as JSON:
 
 ```json
 {{
@@ -31,16 +27,10 @@ Use the beneissue skill to analyze this issue:
     "verifiability": 20,
     "clarity": 15
   }},
-  "priority": "P2",
-  "story_points": 2,
+  "priority": "P0 | P1 | P2",
+  "story_points": 1 | 2 | 3 | 5 | 8,
   "labels": ["bug"],
-  "comment_draft": null
+  "assignee": "github_username from team config, or null if none suitable",
+  "comment_draft": "null, or guidance for issue author if fix/comment-only"
 }}
 ```
-
-## Comment Draft
-
-- For `fix/auto-eligible` (score >= threshold): set `comment_draft` to `null`
-- For `fix/manual-required` or `fix/comment-only`: provide helpful analysis and guidance
-
-IMPORTANT: Your final output MUST be valid JSON matching this structure.
