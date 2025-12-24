@@ -18,10 +18,29 @@ Drowning in GitHub issues? Install beneissue once, and it handles the rest autom
 
 ## Install once, runs forever
 
+### 1. Install the package
+
 ```bash
 pip install beneissue
+```
+
+### 2. Set up GitHub repository secrets
+
+Go to your repo → Settings → Secrets and variables → Actions, and add:
+
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes | Your Claude API key |
+| `LANGCHAIN_API_KEY` | No | LangSmith for tracing |
+
+### 3. Initialize in your repo
+
+```bash
 cd your-repo
 beneissue init
+git add .github/ .claude/
+git commit -m "Add beneissue automation"
+git push
 ```
 
 That's it. From now on:
@@ -81,16 +100,6 @@ policy:
     min_score: 80  # Minimum score for auto-fix
 ```
 
-## Environment Variables
-
-Set these in your GitHub repository secrets:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | Claude API key |
-| `BENEISSUE_TOKEN` | Yes | GitHub token with repo access |
-| `LANGCHAIN_API_KEY` | No | LangSmith for tracing |
-
 ## Labels
 
 | Label | Meaning |
@@ -107,11 +116,16 @@ Set these in your GitHub repository secrets:
 
 For manual runs or debugging:
 
-```bash
-beneissue triage owner/repo --issue 123
-beneissue analyze owner/repo --issue 123 --dry-run
-beneissue fix owner/repo --issue 123
-```
+| Command | Description |
+|---------|-------------|
+| `beneissue init` | Initialize beneissue in current repo |
+| `beneissue triage <repo> --issue <n>` | Classify issue (no GitHub actions) |
+| `beneissue analyze <repo> --issue <n>` | Full analysis + apply labels |
+| `beneissue analyze <repo> --issue <n> --dry-run` | Analysis without GitHub changes |
+| `beneissue fix <repo> --issue <n>` | Attempt auto-fix |
+| `beneissue labels` | Sync labels to repository |
+| `beneissue test` | Run policy tests |
+| `beneissue test --dry-run` | Validate test cases only |
 
 ## License
 
