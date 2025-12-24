@@ -15,20 +15,6 @@ from beneissue.nodes.intake import intake_node
 from beneissue.nodes.triage import triage_node
 
 
-def create_triage_workflow() -> StateGraph:
-    """Create the triage-only workflow (for backward compatibility)."""
-    workflow = StateGraph(IssueState)
-
-    workflow.add_node("intake", intake_node)
-    workflow.add_node("triage", triage_node)
-
-    workflow.set_entry_point("intake")
-    workflow.add_edge("intake", "triage")
-    workflow.add_edge("triage", END)
-
-    return workflow.compile()
-
-
 def create_full_workflow() -> StateGraph:
     """Create the full workflow with triage, analyze, fix, and actions."""
     workflow = StateGraph(IssueState)
@@ -83,6 +69,5 @@ def create_full_workflow() -> StateGraph:
     return workflow.compile()
 
 
-# Compiled workflow instances
-triage_graph = create_triage_workflow()
+# Compiled workflow instance
 full_graph = create_full_workflow()

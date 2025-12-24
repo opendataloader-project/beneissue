@@ -10,37 +10,13 @@ from typing import Optional
 import typer
 
 from beneissue.config import setup_langsmith
-from beneissue.graph.workflow import full_graph, triage_graph
+from beneissue.graph.workflow import full_graph
 from beneissue.labels import LABELS
 
 app = typer.Typer(
     name="beneissue",
     help="AI-powered GitHub issue automation",
 )
-
-
-@app.command()
-def triage(
-    repo: str = typer.Argument(..., help="Repository in owner/repo format"),
-    issue: int = typer.Option(..., "--issue", "-i", help="Issue number to triage"),
-) -> None:
-    """Triage a GitHub issue (classification only, no GitHub actions)."""
-    setup_langsmith()
-
-    typer.echo(f"Triaging issue #{issue} in {repo}...")
-
-    result = triage_graph.invoke(
-        {
-            "repo": repo,
-            "issue_number": issue,
-        }
-    )
-
-    typer.echo(f"\nDecision: {result['triage_decision']}")
-    typer.echo(f"Reason: {result['triage_reason']}")
-    if result.get("duplicate_of"):
-        typer.echo(f"Duplicate of: #{result['duplicate_of']}")
-    typer.echo(f"Labels to add: {result.get('labels_to_add', [])}")
 
 
 @app.command()

@@ -1,7 +1,6 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "triage": "./src/beneissue/graph/workflow.py:triage_graph",
     "full": "./src/beneissue/graph/workflow.py:full_graph"
   },
   "env": ".env"
