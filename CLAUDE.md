@@ -29,24 +29,24 @@ uv run beneissue test --case duplicate            # Run specific test case
 uv run beneissue test --dry-run                   # Validate without running AI
 
 # CLI commands (for local testing)
-uv run beneissue triage owner/repo --issue 123
-uv run beneissue analyze owner/repo --issue 123 --dry-run
-uv run beneissue fix owner/repo --issue 123
+uv run beneissue triage owner/repo --issue 123   # triage only
+uv run beneissue analyze owner/repo --issue 123  # analyze only
+uv run beneissue fix owner/repo --issue 123      # fix only
+uv run beneissue run owner/repo --issue 123      # full workflow
 ```
 
 ## Architecture
 
-### LangGraph Workflow
+### LangGraph Workflows
 
-The core is a LangGraph state machine defined in `src/beneissue/graph/workflow.py`:
+Four independent workflows defined in `src/beneissue/graph/workflow.py`:
 
-```
-intake → triage → [if valid] → analyze → [if auto_eligible] → fix
-                                       → [if manual_required/comment_only] → post_comment
-              → [if invalid/duplicate/needs_info] → apply_labels
-```
+- **triage_graph**: `intake → triage → apply_labels`
+- **analyze_graph**: `intake → analyze → apply_labels`
+- **fix_graph**: `intake → fix → apply_labels`
+- **full_graph**: `intake → triage → analyze → fix → apply_labels` (with conditional routing)
 
-State flows through `IssueState` (defined in `graph/state.py`), accumulating results from each node.
+Each can be invoked independently via CLI or `@beneissue` comments. State flows through `IssueState` (defined in `graph/state.py`).
 
 ### Node Implementations
 
