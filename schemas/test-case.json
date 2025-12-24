@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/opendataloader-project/beneissue/schemas/test-case.json",
+  "title": "beneissue Test Case",
+  "description": "Schema for policy test cases",
+  "type": "object",
+  "required": ["name", "stage", "input", "expected"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable test case name"
+    },
+    "stage": {
+      "type": "string",
+      "enum": ["triage", "analyze"],
+      "description": "Which stage to test"
+    },
+    "input": {
+      "type": "object",
+      "required": ["title", "body"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Issue title"
+        },
+        "body": {
+          "type": "string",
+          "description": "Issue body (markdown)"
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": ["valid", "invalid", "duplicate", "needs_info"],
+          "description": "Expected triage decision"
+        },
+        "fix_decision": {
+          "type": "string",
+          "enum": ["auto_eligible", "manual_required", "comment_only"],
+          "description": "Expected fix decision (for analyze stage)"
+        },
+        "min_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum expected total score"
+        },
+        "max_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum expected total score"
+        },
+        "reason_contains": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Keywords that should appear in the reason"
+        },
+        "labels_include": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Labels that should be applied"
+        }
+      }
+    }
+  }
+}

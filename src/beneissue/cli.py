@@ -1,10 +1,10 @@
 """CLI entry point using Typer."""
 
-import os
+import json
 import shutil
 import subprocess
-from importlib import resources
 from pathlib import Path
+from typing import Optional
 
 import typer
 
@@ -313,6 +313,167 @@ jobs:
 
     workflow_file.write_text(content)
     typer.echo(f"Created: {workflow_file}")
+
+
+# Default test cases directory
+TEST_CASES_DIR = ".claude/skills/beneissue/tests/cases"
+
+
+@app.command()
+def test(
+    case: Optional[str] = typer.Option(
+        None, "--case", "-c", help="Run specific test case by name"
+    ),
+    stage: Optional[str] = typer.Option(
+        None, "--stage", "-s", help="Run only tests for specific stage (triage/analyze)"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n", help="Validate test cases without running AI"
+    ),
+) -> None:
+    """Run policy tests from test cases in the repository.
+
+    Test cases should be JSON files in .claude/skills/beneissue/tests/cases/
+    """
+    setup_langsmith()
+
+    cases_dir = Path(TEST_CASES_DIR)
+    if not cases_dir.exists():
+        typer.echo(f"Error: Test cases directory not found: {cases_dir}")
+        typer.echo("\nCreate test cases in JSON format:")
+        typer.echo(f"  mkdir -p {TEST_CASES_DIR}")
+        typer.echo("  # Add JSON files like triage-valid-bug.json")
+        raise typer.Exit(1)
+
+    # Find test case files
+    case_files = list(cases_dir.glob("*.json"))
+    if not case_files:
+        typer.echo(f"No test cases found in {cases_dir}")
+        raise typer.Exit(1)
+
+    # Filter by case name if specified
+    if case:
+        case_files = [f for f in case_files if case in f.stem]
+        if not case_files:
+            typer.echo(f"No test cases matching '{case}'")
+            raise typer.Exit(1)
+
+    typer.echo(f"Found {len(case_files)} test case(s)\n")
+
+    passed = 0
+    failed = 0
+
+    for case_file in case_files:
+        try:
+            test_case = json.loads(case_file.read_text())
+        except json.JSONDecodeError as e:
+            typer.echo(f"SKIP {case_file.name}: Invalid JSON - {e}")
+            failed += 1
+            continue
+
+        # Filter by stage if specified
+        if stage and test_case.get("stage") != stage:
+            continue
+
+        test_name = test_case.get("name", case_file.stem)
+
+        if dry_run:
+            typer.echo(f"VALID {case_file.name}: {test_name}")
+            passed += 1
+            continue
+
+        typer.echo(f"RUN  {case_file.name}: {test_name}")
+
+        # Run the test
+        result = _run_test_case(test_case)
+
+        if result["passed"]:
+            typer.echo(f"PASS {case_file.name}")
+            passed += 1
+        else:
+            typer.echo(f"FAIL {case_file.name}: {result['reason']}")
+            failed += 1
+
+    typer.echo(f"\n{'=' * 50}")
+    typer.echo(f"Results: {passed} passed, {failed} failed")
+
+    if failed > 0:
+        raise typer.Exit(1)
+
+
+def _run_test_case(test_case: dict) -> dict:
+    """Run a single test case and return result."""
+    from beneissue.nodes.analyze import analyze_node
+    from beneissue.nodes.triage import triage_node
+
+    stage = test_case.get("stage", "triage")
+    input_data = test_case.get("input", {})
+    expected = test_case.get("expected", {})
+
+    # Build mock state
+    state = {
+        "repo": "test/repo",
+        "issue_number": 1,
+        "issue_title": input_data.get("title", ""),
+        "issue_body": input_data.get("body", ""),
+        "issue_labels": [],
+        "issue_author": "test-user",
+    }
+
+    try:
+        # Run triage
+        triage_result = triage_node(state)
+        state.update(triage_result)
+
+        # Check triage expectations
+        if "decision" in expected:
+            if state.get("triage_decision") != expected["decision"]:
+                return {
+                    "passed": False,
+                    "reason": f"Expected decision '{expected['decision']}', got '{state.get('triage_decision')}'",
+                }
+
+        if "reason_contains" in expected:
+            reason = state.get("triage_reason", "")
+            for keyword in expected["reason_contains"]:
+                if keyword.lower() not in reason.lower():
+                    return {
+                        "passed": False,
+                        "reason": f"Reason missing keyword '{keyword}'",
+                    }
+
+        # Run analyze if needed
+        if stage == "analyze" and state.get("triage_decision") == "valid":
+            analyze_result = analyze_node(state)
+            state.update(analyze_result)
+
+            if "fix_decision" in expected:
+                if state.get("fix_decision") != expected["fix_decision"]:
+                    return {
+                        "passed": False,
+                        "reason": f"Expected fix_decision '{expected['fix_decision']}', got '{state.get('fix_decision')}'",
+                    }
+
+            if "min_score" in expected:
+                score = state.get("score", {}).get("total", 0)
+                if score < expected["min_score"]:
+                    return {
+                        "passed": False,
+                        "reason": f"Score {score} below minimum {expected['min_score']}",
+                    }
+
+            if "max_score" in expected:
+                score = state.get("score", {}).get("total", 0)
+                if score > expected["max_score"]:
+                    return {
+                        "passed": False,
+                        "reason": f"Score {score} above maximum {expected['max_score']}",
+                    }
+
+        return {"passed": True, "reason": ""}
+
+    except Exception as e:
+        return {"passed": False, "reason": str(e)}
 
 
 if __name__ == "__main__":
