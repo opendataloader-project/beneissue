@@ -1,6 +1,6 @@
 [project]
 name = "beneissue"
-version = "0.1.0"
+version = "0.0.0"  # Replaced by CI from git tag
 description = "AI-powered GitHub issue automation framework"
 readme = "README.md"
 license = "Apache-2.0"
