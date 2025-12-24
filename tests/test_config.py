@@ -35,9 +35,6 @@ class TestLoadConfig:
             config_file = config_dir / "beneissue-config.yml"
             config_file.write_text("""
 version: "1.0"
-project:
-  name: "test-project"
-  description: "Test description"
 models:
   triage: claude-sonnet-4
   analyze: claude-opus-4
@@ -50,8 +47,6 @@ scoring:
 
             config = load_config(Path(tmpdir))
 
-            assert config.project.name == "test-project"
-            assert config.project.description == "Test description"
             assert config.models.triage == "claude-sonnet-4"
             assert config.models.analyze == "claude-opus-4"
             assert config.models.fix == DEFAULT_FIX_MODEL  # Not set in file
@@ -93,13 +88,10 @@ scoring:
             config_file = config_dir / "beneissue-config.yml"
             config_file.write_text("""
 version: "1.0"
-project:
-  name: "minimal"
 """)
 
             config = load_config(Path(tmpdir))
 
-            assert config.project.name == "minimal"
             # Defaults should apply
             assert config.models.triage == DEFAULT_TRIAGE_MODEL
 

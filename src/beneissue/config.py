@@ -105,14 +105,6 @@ class LabelsConfig:
 
 
 @dataclass
-class ProjectConfig:
-    """Project metadata."""
-
-    name: str = ""
-    description: str = ""
-
-
-@dataclass
 class LimitsConfig:
     """Limits configuration."""
 
@@ -124,7 +116,6 @@ class BeneissueConfig:
     """Main configuration class."""
 
     version: str = "1.0"
-    project: ProjectConfig = field(default_factory=ProjectConfig)
     models: ModelsConfig = field(default_factory=ModelsConfig)
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     team: list[TeamMember] = field(default_factory=list)
@@ -185,11 +176,6 @@ def load_config(repo_path: Optional[Path] = None) -> BeneissueConfig:
     if config_file.exists():
         with open(config_file) as f:
             data = yaml.safe_load(f) or {}
-
-        # Parse project
-        if "project" in data:
-            config.project.name = data["project"].get("name", "")
-            config.project.description = data["project"].get("description", "")
 
         # Parse models
         if "models" in data:

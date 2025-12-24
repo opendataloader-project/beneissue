@@ -40,57 +40,11 @@ def _clone_repo(repo: str, target_dir: str) -> bool:
 
 def _build_analyze_prompt(state: IssueState) -> str:
     """Build the analyze prompt for Claude Code."""
-    config = load_config()
-    project_desc = config.project.description or f"Repository: {state['repo']}"
-
-    # Claude Code will explore the codebase directly
-    system_context = ANALYZE_PROMPT.format(
-        project_description=project_desc,
-        codebase_instruction="Search the entire repository for relevant files.",
+    return ANALYZE_PROMPT.format(
+        issue_title=state["issue_title"],
+        issue_body=state["issue_body"],
+        repo=state["repo"],
     )
-
-    return f"""{system_context}
-
----
-
-## Issue to Analyze
-
-**Title**: {state['issue_title']}
-
-**Body**:
-{state['issue_body']}
-
-**Repository**: {state['repo']}
-
----
-
-## Instructions
-
-1. Use Read, Glob, and Grep tools to explore the codebase
-2. Identify affected files by searching for relevant code
-3. Analyze the scope, risk, and complexity
-4. Return your analysis as JSON with this exact structure:
-
-```json
-{{
-  "summary": "2-3 sentences: what the issue is, why it occurs, and how to fix",
-  "affected_files": ["path/to/file1.py", "path/to/file2.py"],
-  "score": {{
-    "total": 85,
-    "scope": 25,
-    "risk": 25,
-    "verifiability": 20,
-    "clarity": 15
-  }},
-  "priority": "P2",
-  "story_points": 2,
-  "labels": ["bug"],
-  "comment_draft": null
-}}
-```
-
-IMPORTANT: Your final output MUST be valid JSON matching this structure.
-"""
 
 
 def _parse_analyze_response(output: str) -> AnalyzeResult | None:
