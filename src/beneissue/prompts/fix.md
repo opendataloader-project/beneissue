@@ -1,11 +1,8 @@
-# Fix Instructions
+# Fix Issue
 
-You are fixing a GitHub issue. Follow these instructions carefully.
+You are fixing GitHub issue #{issue_number}: {issue_title}
 
-## Context
-
-Issue: {issue_title}
-Repository: {repo}
+**Repository**: {repo}
 
 ## Analysis Summary
 
@@ -15,20 +12,16 @@ Repository: {repo}
 
 {affected_files}
 
-## Recommended Approach
-
-{fix_approach}
-
 ## Instructions
 
-1. **Understand the issue**: Read the analysis and affected files carefully
-2. **Write tests first**: Create failing tests that will pass after the fix (if applicable)
-3. **Implement the fix**: Make the minimal changes needed to fix the issue
-4. **Run tests**: Verify all tests pass
-5. **Create a PR**:
-   - Branch name: `fix/issue-{issue_number}`
-   - PR title: `Fix #{issue_number}: {brief_description}`
-   - PR body: Include the analysis summary and what was changed
+1. Understand the issue and the codebase
+2. Write tests first (if applicable)
+3. Implement the fix with minimal changes
+4. Run tests to verify
+5. Create a PR:
+   - Branch: `fix/issue-{issue_number}`
+   - Title: `Fix #{issue_number}: <brief description>`
+   - Body: Include what was changed and why
 
 ## Important
 
