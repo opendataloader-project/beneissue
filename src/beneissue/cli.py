@@ -75,8 +75,8 @@ def analyze(
             typer.echo("\n--- Analysis ---")
             typer.echo(f"Summary: {state['analysis_summary']}")
             typer.echo(f"Affected files: {state['affected_files']}")
-            typer.echo(f"Approach: {state['fix_approach']}")
             typer.echo(f"Fix decision: {state['fix_decision']}")
+            typer.echo(f"Reason: {state.get('fix_reason', '')}")
 
         typer.echo(f"\nLabels to add: {state.get('labels_to_add', [])}")
         typer.echo("\n[DRY RUN] No actions taken on GitHub.")
@@ -293,8 +293,6 @@ def labels_sync(
 
     existing_labels = {}
     if result.returncode == 0:
-        import json
-
         for label in json.loads(result.stdout):
             existing_labels[label["name"]] = label
 

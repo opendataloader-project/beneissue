@@ -1,10 +1,35 @@
 """GitHub API integration."""
 
 import os
+import subprocess
 from datetime import datetime, timezone
 from typing import Optional
 
 from github import Github
+
+
+def clone_repo(repo: str, target_dir: str) -> bool:
+    """Clone a repository to a target directory.
+
+    Args:
+        repo: Repository in owner/repo format
+        target_dir: Directory to clone into
+
+    Returns:
+        True if clone succeeded, False otherwise
+    """
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        repo_url = f"https://x-access-token:{token}@github.com/{repo}.git"
+    else:
+        repo_url = f"https://github.com/{repo}.git"
+
+    result = subprocess.run(
+        ["git", "clone", "--depth", "1", repo_url, target_dir],
+        capture_output=True,
+        timeout=60,
+    )
+    return result.returncode == 0
 
 
 def get_github_client() -> Github:

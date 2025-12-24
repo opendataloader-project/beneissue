@@ -10,6 +10,7 @@ from pathlib import Path
 from langsmith import traceable
 
 from beneissue.graph.state import IssueState
+from beneissue.integrations.github import clone_repo
 from beneissue.nodes.schemas import FixResult
 
 # Load prompt from file
@@ -38,22 +39,6 @@ def _parse_fix_output(output: str) -> FixResult | None:
                 continue
 
     return None
-
-
-def _clone_repo(repo: str, target_dir: str) -> bool:
-    """Clone a repository to a target directory."""
-    token = os.environ.get("GITHUB_TOKEN")
-    if token:
-        repo_url = f"https://x-access-token:{token}@github.com/{repo}.git"
-    else:
-        repo_url = f"https://github.com/{repo}.git"
-
-    result = subprocess.run(
-        ["git", "clone", "--depth", "1", repo_url, target_dir],
-        capture_output=True,
-        timeout=60,
-    )
-    return result.returncode == 0
 
 
 def _build_fix_prompt(state: IssueState) -> str:
@@ -141,7 +126,7 @@ def fix_node(state: IssueState) -> dict:
         repo_path = os.path.join(temp_dir, "repo")
 
         # Clone the repository
-        if not _clone_repo(state["repo"], repo_path):
+        if not clone_repo(state["repo"], repo_path):
             return {
                 "fix_success": False,
                 "fix_error": "Failed to clone repository",

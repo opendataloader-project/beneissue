@@ -84,19 +84,24 @@ Edit `.claude/skills/beneissue/beneissue-config.yml`:
 ```yaml
 version: "1.0"
 
-project:
-  name: "my-project"
-  description: |
-    Brief description of your project.
-    Include any special triage rules here.
-
 models:
-  triage: claude-haiku-4-5    # Fast, cheap
-  analyze: claude-sonnet-4    # Balanced
+  triage: claude-haiku-4-5    # Fast, cheap (~$0.02/call)
 
-policy:
-  auto_fix:
+limits:
+  daily:
+    triage: 50   # ~$1/day
+    analyze: 20  # ~$2-10/day
+    fix: 5       # ~$5-25/day
+
+team:
+  - github_id: "your-github-id"
+    available: true
+    specialties: ["backend", "python"]
+
+observability:
+  langsmith:
     enabled: true
+    project: "beneissue"
 ```
 
 ## Labels

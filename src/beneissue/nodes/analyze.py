@@ -6,9 +6,11 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
+
 from langsmith import traceable
 
 from beneissue.graph.state import IssueState
+from beneissue.integrations.github import clone_repo
 from beneissue.nodes.schemas import AnalyzeResult
 
 # Load prompt from file
@@ -17,22 +19,6 @@ ANALYZE_PROMPT = PROMPT_PATH.read_text()
 
 # Timeout for Claude Code execution (3 minutes for analysis)
 CLAUDE_CODE_TIMEOUT = 180
-
-
-def _clone_repo(repo: str, target_dir: str) -> bool:
-    """Clone a repository to a target directory."""
-    token = os.environ.get("GITHUB_TOKEN")
-    if token:
-        repo_url = f"https://x-access-token:{token}@github.com/{repo}.git"
-    else:
-        repo_url = f"https://github.com/{repo}.git"
-
-    result = subprocess.run(
-        ["git", "clone", "--depth", "1", repo_url, target_dir],
-        capture_output=True,
-        timeout=60,
-    )
-    return result.returncode == 0
 
 
 def _build_analyze_prompt(state: IssueState) -> str:
@@ -149,7 +135,7 @@ def analyze_node(state: IssueState) -> dict:
         repo_path = os.path.join(temp_dir, "repo")
 
         # Clone the repository
-        if not _clone_repo(state["repo"], repo_path):
+        if not clone_repo(state["repo"], repo_path):
             return _fallback_analyze("Failed to clone repository")
 
         return _run_analysis(repo_path, prompt, verbose=verbose)
