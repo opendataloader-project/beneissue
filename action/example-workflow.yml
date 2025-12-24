@@ -1,0 +1,49 @@
+# Example workflow for using beneissue
+# Copy this to your repo's .github/workflows/beneissue.yml
+
+name: beneissue
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  triage:
+    # Run on new issues
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: opendataloader-project/beneissue@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
+          command: analyze
+
+  on-command:
+    # Run on @beneissue commands in comments
+    if: |
+      github.event_name == 'issue_comment' &&
+      contains(github.event.comment.body, '@beneissue')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse command
+        id: parse
+        run: |
+          COMMENT="${{ github.event.comment.body }}"
+          if [[ "$COMMENT" == *"@beneissue triage"* ]]; then
+            echo "command=triage" >> $GITHUB_OUTPUT
+          elif [[ "$COMMENT" == *"@beneissue analyze"* ]]; then
+            echo "command=analyze" >> $GITHUB_OUTPUT
+          else
+            echo "command=analyze" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: opendataloader-project/beneissue@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
+          command: ${{ steps.parse.outputs.command }}
