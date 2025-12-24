@@ -3,6 +3,7 @@
 import json
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -415,44 +416,81 @@ def test(
             typer.echo(f"No test cases matching '{case}'")
             raise typer.Exit(1)
 
-    typer.echo(f"Found {len(case_files)} test case(s)\n")
+    typer.secho(f"Found {len(case_files)} test case(s)\n", fg=typer.colors.CYAN)
 
     passed = 0
     failed = 0
+    skipped = 0
+    total_time = 0.0
 
     for case_file in case_files:
         try:
             test_case = json.loads(case_file.read_text())
         except json.JSONDecodeError as e:
-            typer.echo(f"SKIP {case_file.name}: Invalid JSON - {e}")
-            failed += 1
+            typer.secho("  SKIP  ", fg=typer.colors.YELLOW, nl=False)
+            typer.echo(f"{case_file.name}: Invalid JSON - {e}")
+            skipped += 1
             continue
 
         # Filter by stage if specified
         if stage and test_case.get("stage") != stage:
+            skipped += 1
             continue
 
         test_name = test_case.get("name", case_file.stem)
 
         if dry_run:
-            typer.echo(f"VALID {case_file.name}: {test_name}")
+            typer.secho("  VALID ", fg=typer.colors.GREEN, nl=False)
+            typer.secho(f"{case_file.name}", fg=typer.colors.WHITE, bold=True, nl=False)
+            typer.echo(f": {test_name}")
             passed += 1
             continue
 
-        typer.echo(f"RUN  {case_file.name}: {test_name}")
+        typer.secho("  RUN   ", fg=typer.colors.BLUE, nl=False)
+        typer.secho(f"{case_file.name}", fg=typer.colors.WHITE, bold=True, nl=False)
+        typer.echo(f": {test_name}")
 
-        # Run the test
+        # Run the test with timing
+        start_time = time.perf_counter()
         result = _run_test_case(test_case, project_root)
+        elapsed = time.perf_counter() - start_time
+        total_time += elapsed
+
+        # Format elapsed time
+        time_str = f"({elapsed:.2f}s)" if elapsed >= 1 else f"({elapsed * 1000:.0f}ms)"
 
         if result["passed"]:
-            typer.echo(f"PASS {case_file.name}")
+            typer.secho("  PASS  ", fg=typer.colors.GREEN, bold=True, nl=False)
+            typer.echo(f"{case_file.name} ", nl=False)
+            typer.secho(time_str, fg=typer.colors.BRIGHT_BLACK)
             passed += 1
         else:
-            typer.echo(f"FAIL {case_file.name}: {result['reason']}")
+            typer.secho("  FAIL  ", fg=typer.colors.RED, bold=True, nl=False)
+            typer.secho(f"{case_file.name} ", nl=False)
+            typer.secho(time_str, fg=typer.colors.BRIGHT_BLACK, nl=False)
+            typer.secho(f": {result['reason']}", fg=typer.colors.RED)
             failed += 1
 
-    typer.echo(f"\n{'=' * 50}")
-    typer.echo(f"Results: {passed} passed, {failed} failed")
+    # Summary
+    typer.echo()
+    typer.secho("=" * 50, fg=typer.colors.CYAN)
+
+    # Build colored summary
+    typer.echo("Results: ", nl=False)
+    typer.secho(f"{passed} passed", fg=typer.colors.GREEN, bold=True, nl=False)
+    typer.echo(", ", nl=False)
+    if failed > 0:
+        typer.secho(f"{failed} failed", fg=typer.colors.RED, bold=True, nl=False)
+    else:
+        typer.secho(f"{failed} failed", fg=typer.colors.WHITE, nl=False)
+    if skipped > 0:
+        typer.echo(", ", nl=False)
+        typer.secho(f"{skipped} skipped", fg=typer.colors.YELLOW, nl=False)
+    if total_time > 0:
+        time_summary = f" in {total_time:.2f}s" if total_time >= 1 else f" in {total_time * 1000:.0f}ms"
+        typer.secho(time_summary, fg=typer.colors.BRIGHT_BLACK)
+    else:
+        typer.echo()
 
     if failed > 0:
         raise typer.Exit(1)
