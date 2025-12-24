@@ -1,73 +1,64 @@
 # beneissue
 
-AI-powered GitHub issue automation framework using LangGraph and Claude.
+Drowning in GitHub issues? beneissue automatically triages them and creates PRs for simple fixes.
 
-## Features
+## Who is this for?
 
-- **Triage**: Classify issues as valid, invalid, duplicate, or needs-info
-- **Analyze**: Deep analysis with affected files, fix approach, and scoring
-- **Fix**: Auto-fix eligible issues using Claude Code
-- **Auto-labeling**: Automatically apply labels based on analysis
-- **LangSmith Integration**: Full observability with tracing
+- **Open source maintainers** with 100+ issues piling up
+- **Small teams** who can't afford to manually label every issue
+- **Solo developers** who want typo fixes handled automatically
 
-## Installation
+## What changes after you install it?
+
+| Before | After |
+|--------|-------|
+| Issue opened → check it days later | Issue opened → instantly classified + labeled |
+| Manually comment "need more info" | Auto-asks specific follow-up questions |
+| Fix simple bugs yourself | Score 80+ issues get auto-PR via Claude Code |
+
+## Get started in 5 minutes
 
 ```bash
 pip install beneissue
-```
-
-## Quick Start
-
-```bash
-# Initialize beneissue in your repository
 cd your-repo
 beneissue init
+```
 
-# This creates:
-# - .github/workflows/beneissue.yml (GitHub Action)
-# - .claude/skills/beneissue/ (skill config + test cases)
-# - GitHub labels for triage/fix status
+Done. New issues will be processed automatically.
+
+### Verify it works
+
+When an issue gets these labels, you're set:
+- `triage/valid` — Valid issue, ready for work
+- `fix/auto-eligible` — Will be auto-fixed
+
+## How it works
+
+```
+Issue opened
+    ↓
+[Triage] → valid / invalid / duplicate / needs-info
+    ↓
+[Analyze] → affected files, fix approach, score (0-100)
+    ↓
+[Fix] → score ≥ 80? → Claude Code creates PR
 ```
 
 ## CLI Commands
 
 ```bash
-# Triage only (no GitHub actions)
+# Process a specific issue
 beneissue triage owner/repo --issue 123
-
-# Full analysis with labels and comments
 beneissue analyze owner/repo --issue 123
-
-# Dry run (no GitHub actions)
-beneissue analyze owner/repo --issue 123 --dry-run
-
-# Attempt auto-fix
 beneissue fix owner/repo --issue 123
 
-# Sync labels to repository
-beneissue labels
+# Dry run (no GitHub changes)
+beneissue analyze owner/repo --issue 123 --dry-run
 
-# Run policy tests
-beneissue test
-beneissue test --dry-run  # Validate test cases only
-```
-
-## Repository Setup
-
-After running `beneissue init`, your repository will have:
-
-```
-your-repo/
-├── .github/workflows/
-│   └── beneissue.yml          # GitHub Action workflow
-└── .claude/skills/beneissue/
-    ├── SKILL.md               # Skill definition
-    ├── beneissue.yml          # Configuration
-    ├── prompts/               # Custom prompts (optional)
-    └── tests/cases/           # Policy test cases
-        ├── triage-valid-bug.json
-        ├── triage-needs-info.json
-        └── triage-invalid-spam.json
+# Setup commands
+beneissue init      # Initialize in current repo
+beneissue labels    # Sync labels to GitHub
+beneissue test      # Run policy tests
 ```
 
 ## Configuration
@@ -79,26 +70,26 @@ version: "1.0"
 
 project:
   name: "my-project"
-  description: "Project description for AI context"
+  description: |
+    Brief description of your project.
+    Include any special triage rules here.
 
-# Override default models
 models:
-  triage: claude-haiku-4-5
-  analyze: claude-sonnet-4
+  triage: claude-haiku-4-5    # Fast, cheap
+  analyze: claude-sonnet-4    # Balanced
   fix: claude-sonnet-4
 
-# Auto-fix policy
 policy:
   auto_fix:
     enabled: true
-    min_score: 80  # Minimum score for auto-fix eligibility
+    min_score: 80  # Minimum score for auto-fix
 ```
 
 ## GitHub Action
 
-The generated workflow triggers on:
+The workflow triggers on:
 - New issues (`issues: opened`)
-- Issue comments with `@beneissue` commands
+- Comments with `@beneissue` commands
 
 ```yaml
 # Manual commands in issue comments:
@@ -113,51 +104,19 @@ The generated workflow triggers on:
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Claude API key |
 | `BENEISSUE_TOKEN` | Yes | GitHub token with repo access |
-| `LANGCHAIN_API_KEY` | No | LangSmith API key for tracing |
-| `BENEISSUE_MODEL_TRIAGE` | No | Override triage model |
-| `BENEISSUE_MODEL_ANALYZE` | No | Override analyze model |
-
-## Policy Tests
-
-Create test cases to validate your triage/analyze behavior:
-
-```json
-{
-  "name": "Valid bug report",
-  "stage": "triage",
-  "input": {
-    "title": "App crashes on startup",
-    "body": "## Steps to reproduce\n1. Open app\n2. See crash"
-  },
-  "expected": {
-    "decision": "valid",
-    "reason_contains": ["crash", "reproduce"]
-  }
-}
-```
-
-Run tests:
-```bash
-beneissue test                    # Run all tests
-beneissue test --case valid-bug   # Run specific test
-beneissue test --stage triage     # Run only triage tests
-beneissue test --dry-run          # Validate without API calls
-```
+| `LANGCHAIN_API_KEY` | No | LangSmith for tracing |
 
 ## Labels
 
-beneissue uses these labels:
-
-| Label | Description |
-|-------|-------------|
+| Label | Meaning |
+|-------|---------|
 | `triage/valid` | Valid issue, ready for analysis |
-| `triage/invalid` | Out of scope or invalid |
-| `triage/duplicate` | Duplicate issue |
-| `triage/needs-info` | Needs more information |
-| `fix/auto-eligible` | Eligible for auto-fix (score >= 80) |
-| `fix/manual-required` | Requires manual implementation |
-| `fix/completed` | Fix completed |
-| `fix/failed` | Fix attempted but failed |
+| `triage/invalid` | Out of scope or spam |
+| `triage/duplicate` | Already reported |
+| `triage/needs-info` | Waiting for more details |
+| `fix/auto-eligible` | Score ≥ 80, will be auto-fixed |
+| `fix/manual-required` | Score 50-79, needs human |
+| `fix/completed` | Auto-fix PR created |
 
 ## License
 
