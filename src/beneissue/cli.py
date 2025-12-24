@@ -213,7 +213,7 @@ def init(
         )
 
         # Write example test cases
-        test_case_templates = Path(__file__).parent / "templates" / ".claude" / "skills" / "test-cases"
+        test_case_templates = Path(__file__).parent / "templates" / ".claude" / "skills" / "tests" / "cases"
         if test_case_templates.exists():
             for case_file in test_case_templates.glob("*.json"):
                 dest_file = cases_dir / case_file.name
