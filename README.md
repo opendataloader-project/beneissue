@@ -1,6 +1,6 @@
 # beneissue
 
-Drowning in GitHub issues? beneissue automatically triages them and creates PRs for simple fixes.
+Drowning in GitHub issues? Install beneissue once, and it handles the rest automatically.
 
 ## Who is this for?
 
@@ -16,7 +16,7 @@ Drowning in GitHub issues? beneissue automatically triages them and creates PRs 
 | Manually comment "need more info" | Auto-asks specific follow-up questions |
 | Fix simple bugs yourself | Score 80+ issues get auto-PR via Claude Code |
 
-## Get started in 5 minutes
+## Install once, runs forever
 
 ```bash
 pip install beneissue
@@ -24,13 +24,21 @@ cd your-repo
 beneissue init
 ```
 
-Done. New issues will be processed automatically.
+That's it. From now on:
 
-### Verify it works
+1. **New issue opened** → automatically triaged and labeled
+2. **High-score issues** → Claude Code creates a PR
+3. **Need manual control?** → just comment on the issue
 
-When an issue gets these labels, you're set:
-- `triage/valid` — Valid issue, ready for work
-- `fix/auto-eligible` — Will be auto-fixed
+### Control via issue comments
+
+```
+@beneissue triage    # Re-classify this issue
+@beneissue analyze   # Run full analysis
+@beneissue fix       # Attempt auto-fix now
+```
+
+No CLI needed. Just talk to the bot in the issue thread.
 
 ## How it works
 
@@ -44,22 +52,11 @@ Issue opened
 [Fix] → score ≥ 80? → Claude Code creates PR
 ```
 
-## CLI Commands
+## Verify it's working
 
-```bash
-# Process a specific issue
-beneissue triage owner/repo --issue 123
-beneissue analyze owner/repo --issue 123
-beneissue fix owner/repo --issue 123
-
-# Dry run (no GitHub changes)
-beneissue analyze owner/repo --issue 123 --dry-run
-
-# Setup commands
-beneissue init      # Initialize in current repo
-beneissue labels    # Sync labels to GitHub
-beneissue test      # Run policy tests
-```
+When issues get these labels automatically, you're set:
+- `triage/valid` — Valid issue, ready for work
+- `fix/auto-eligible` — Will be auto-fixed
 
 ## Configuration
 
@@ -77,7 +74,6 @@ project:
 models:
   triage: claude-haiku-4-5    # Fast, cheap
   analyze: claude-sonnet-4    # Balanced
-  fix: claude-sonnet-4
 
 policy:
   auto_fix:
@@ -85,20 +81,9 @@ policy:
     min_score: 80  # Minimum score for auto-fix
 ```
 
-## GitHub Action
-
-The workflow triggers on:
-- New issues (`issues: opened`)
-- Comments with `@beneissue` commands
-
-```yaml
-# Manual commands in issue comments:
-@beneissue triage   # Classify the issue
-@beneissue analyze  # Full analysis
-@beneissue fix      # Attempt auto-fix
-```
-
 ## Environment Variables
+
+Set these in your GitHub repository secrets:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -117,6 +102,16 @@ The workflow triggers on:
 | `fix/auto-eligible` | Score ≥ 80, will be auto-fixed |
 | `fix/manual-required` | Score 50-79, needs human |
 | `fix/completed` | Auto-fix PR created |
+
+## CLI (optional)
+
+For manual runs or debugging:
+
+```bash
+beneissue triage owner/repo --issue 123
+beneissue analyze owner/repo --issue 123 --dry-run
+beneissue fix owner/repo --issue 123
+```
 
 ## License
 
