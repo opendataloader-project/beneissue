@@ -285,6 +285,112 @@ def _write_template_file(
     typer.echo(f"Created: {dest_file}")
 
 
+@app.command("labels")
+def labels_sync(
+    delete_unused: bool = typer.Option(
+        False, "--delete-unused", help="Delete beneissue labels not in standard set"
+    ),
+) -> None:
+    """Sync beneissue labels to the repository.
+
+    Creates missing labels and updates existing ones with correct colors.
+    Use --delete-unused to remove old beneissue labels.
+    """
+    # Check if gh CLI is available
+    if not shutil.which("gh"):
+        typer.echo("Error: GitHub CLI (gh) not found.")
+        typer.echo("Install: https://cli.github.com/")
+        raise typer.Exit(1)
+
+    # Check if we're in a git repo
+    if not Path(".git").exists():
+        typer.echo("Error: Not a git repository.")
+        raise typer.Exit(1)
+
+    typer.echo("Syncing beneissue labels...\n")
+
+    # Get existing labels
+    result = subprocess.run(
+        ["gh", "label", "list", "--json", "name,color,description"],
+        capture_output=True,
+        text=True,
+    )
+
+    existing_labels = {}
+    if result.returncode == 0:
+        import json
+
+        for label in json.loads(result.stdout):
+            existing_labels[label["name"]] = label
+
+    # Standard label names for checking unused
+    standard_names = {name for name, _, _ in BENEISSUE_LABELS}
+
+    # Create or update labels
+    for label_name, color, description in BENEISSUE_LABELS:
+        if label_name in existing_labels:
+            existing = existing_labels[label_name]
+            # Check if update needed
+            if existing["color"].lower() != color.lower():
+                result = subprocess.run(
+                    [
+                        "gh",
+                        "label",
+                        "edit",
+                        label_name,
+                        "--color",
+                        color,
+                        "--description",
+                        description,
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode == 0:
+                    typer.echo(f"  Updated: {label_name}")
+                else:
+                    typer.echo(f"  Failed to update: {label_name}")
+            else:
+                typer.echo(f"  OK:      {label_name}")
+        else:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "label",
+                    "create",
+                    label_name,
+                    "--color",
+                    color,
+                    "--description",
+                    description,
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                typer.echo(f"  Created: {label_name}")
+            else:
+                typer.echo(f"  Failed:  {label_name} - {result.stderr.strip()}")
+
+    # Delete unused beneissue labels
+    if delete_unused:
+        typer.echo("\nChecking for unused beneissue labels...")
+        for name in existing_labels:
+            # Only consider labels that look like beneissue labels
+            if name.startswith(("triage/", "fix/")) and name not in standard_names:
+                result = subprocess.run(
+                    ["gh", "label", "delete", name, "--yes"],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode == 0:
+                    typer.echo(f"  Deleted: {name}")
+                else:
+                    typer.echo(f"  Failed to delete: {name}")
+
+    typer.echo("\nLabels synced.")
+
+
 # Default test cases directory
 TEST_CASES_DIR = ".claude/skills/beneissue/tests/cases"
 
