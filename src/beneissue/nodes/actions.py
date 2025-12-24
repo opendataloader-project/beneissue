@@ -93,10 +93,8 @@ def post_comment_node(state: IssueState) -> dict:
         if state.get("assignee"):
             comment_parts.append(f"\n**Assigned to:** @{state['assignee']}")
 
-        if state.get("score"):
-            score = state["score"]
-            comment_parts.append(f"\n**Auto-fix Score:** {score.get('total', 'N/A')}/100")
-            comment_parts.append(f"**Decision:** {state.get('fix_decision', 'N/A')}")
+        if state.get("fix_decision"):
+            comment_parts.append(f"\n**Decision:** {state.get('fix_decision')}")
 
     # Add custom comment if provided
     if state.get("comment_to_post"):

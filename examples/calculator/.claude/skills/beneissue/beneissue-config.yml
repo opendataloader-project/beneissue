@@ -7,31 +7,6 @@ version: "1.0"
 models:
   triage: claude-haiku-4-5    # Fast triage (~$0.02/call)
 
-# Auto-fix scoring
-scoring:
-  threshold: 80  # Score >= this triggers auto-fix
-  # Adjustment guide:
-  # - Conservative: 80
-  # - Standard: 70
-  # - Aggressive: 60
-  criteria:
-    scope: { weight: 30 }         # Change scope and complexity
-    risk: { weight: 30 }          # Failure risk level
-    verifiability: { weight: 25 } # Verification capability
-    clarity: { weight: 15 }       # Requirement clarity
-
-# Team settings (for assignee recommendation)
-team:
-  - github_id: ""
-    available: true
-    specialties: []
-  # - github_id: "alice"
-  #   available: true
-  #   specialties: ["frontend", "react"]
-  # - github_id: "bob"
-  #   available: true
-  #   specialties: ["backend", "python"]
-
 # Daily limits (cost control)
 limits:
   daily:
@@ -45,3 +20,11 @@ observability:
     enabled: true
     project: "beneissue"
 
+# Team settings (for assignee recommendation)
+team:
+  - github_id: "pm-jane"
+    available: true
+    specialties: ["project-management", "planning", "requirements"]
+  - github_id: "dev-john"
+    available: true
+    specialties: ["python", "backend", "testing"]

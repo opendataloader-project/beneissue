@@ -241,21 +241,6 @@ class AnalyzeResultValidator:
                     f"priority mismatch: expected one of {priority_in}, got '{actual_priority}'"
                 )
 
-        # Check score bounds (only if score was successfully parsed)
-        score = result.get("score", {})
-        if score.get("total", 0) > 0:  # Only validate if score was parsed
-            score_min = self.expected.get("score_min")
-            if score_min is not None and score.get("total", 0) < score_min:
-                errors.append(
-                    f"score too low: expected >= {score_min}, got {score.get('total')}"
-                )
-
-            score_max = self.expected.get("score_max")
-            if score_max is not None and score.get("total", 100) > score_max:
-                errors.append(
-                    f"score too high: expected <= {score_max}, got {score.get('total')}"
-                )
-
         # Check that affected files were identified (for successful analysis)
         if self.expected.get("requires_affected_files", False):
             if not result.get("affected_files"):

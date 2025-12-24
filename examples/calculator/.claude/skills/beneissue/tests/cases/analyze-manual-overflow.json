@@ -1,7 +1,7 @@
 {
   "name": "Manual required - overflow security issue",
   "stage": "analyze",
-  "description": "Security-related overflow issue should require manual review",
+  "description": "Security-related overflow issue should require manual review and be assigned to Python developer",
   "input": {
     "title": "Security: Integer overflow vulnerability in multiply()",
     "body": "## Description\nThe `multiply()` function in `src/multiply.py` has a potential integer overflow vulnerability when handling very large numbers.\n\n## Security Impact\n- Attackers could exploit this to cause unexpected behavior\n- No input validation on operand sizes\n- Could lead to denial of service or incorrect calculations\n\n## Steps to Reproduce\n1. Call `multiply(sys.float_info.max, 2)`\n2. Observe undefined behavior or crash\n\n## Suggested Fix\nAdd proper input validation and overflow checks before performing multiplication.\n\n## Severity\nMedium - requires careful security review"
@@ -9,6 +9,6 @@
   "expected": {
     "decision": "valid",
     "fix_decision": "manual_required",
-    "max_score": 79
+    "assignee": "dev-john"
   }
 }

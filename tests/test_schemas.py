@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from beneissue.nodes.schemas import AnalyzeResult, ScoreBreakdown, TriageResult
+from beneissue.nodes.schemas import AnalyzeResult, TriageResult
 
 
 class TestTriageResult:
@@ -26,28 +26,6 @@ class TestTriageResult:
             TriageResult(decision="unknown", reason="test")
 
 
-class TestScoreBreakdown:
-    """Tests for ScoreBreakdown schema."""
-
-    def test_valid_scores(self):
-        score = ScoreBreakdown(
-            total=85, scope=25, risk=25, verifiability=20, clarity=15
-        )
-        assert score.total == 85
-
-    def test_auto_fix_threshold(self):
-        """Score >= 80 should be auto-fix eligible."""
-        high_score = ScoreBreakdown(
-            total=85, scope=25, risk=25, verifiability=20, clarity=15
-        )
-        low_score = ScoreBreakdown(
-            total=60, scope=15, risk=15, verifiability=15, clarity=15
-        )
-
-        assert high_score.total >= 80
-        assert low_score.total < 80
-
-
 class TestAnalyzeResult:
     """Tests for AnalyzeResult schema."""
 
@@ -55,26 +33,23 @@ class TestAnalyzeResult:
         result = AnalyzeResult(
             summary="Fix typo in README",
             affected_files=["README.md"],
-            approach="Change 'teh' to 'the'",
-            score=ScoreBreakdown(
-                total=95, scope=30, risk=30, verifiability=25, clarity=10
-            ),
+            fix_decision="auto_eligible",
+            reason="Simple typo fix with clear solution",
             priority="P2",
             story_points=1,
             labels=["documentation"],
         )
         assert result.priority == "P2"
         assert result.story_points == 1
+        assert result.fix_decision == "auto_eligible"
 
     def test_invalid_priority_rejected(self):
         with pytest.raises(ValidationError):
             AnalyzeResult(
                 summary="test",
                 affected_files=[],
-                approach="test",
-                score=ScoreBreakdown(
-                    total=50, scope=10, risk=10, verifiability=10, clarity=10
-                ),
+                fix_decision="auto_eligible",
+                reason="test reason",
                 priority="P3",  # Invalid
                 story_points=1,
                 labels=[],
@@ -85,11 +60,22 @@ class TestAnalyzeResult:
             AnalyzeResult(
                 summary="test",
                 affected_files=[],
-                approach="test",
-                score=ScoreBreakdown(
-                    total=50, scope=10, risk=10, verifiability=10, clarity=10
-                ),
+                fix_decision="auto_eligible",
+                reason="test reason",
                 priority="P1",
                 story_points=4,  # Invalid (not in 1,2,3,5,8)
                 labels=[],
             )
+
+    def test_assignee_optional(self):
+        result = AnalyzeResult(
+            summary="Fix bug",
+            affected_files=["src/main.py"],
+            fix_decision="manual_required",
+            reason="Complex fix requiring review",
+            priority="P1",
+            story_points=3,
+            labels=["bug"],
+            assignee="dev-john",
+        )
+        assert result.assignee == "dev-john"

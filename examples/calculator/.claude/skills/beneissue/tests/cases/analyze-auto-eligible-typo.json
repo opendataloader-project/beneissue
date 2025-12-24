@@ -1,7 +1,7 @@
 {
   "name": "Auto-eligible - typo fix in docstring",
   "stage": "analyze",
-  "description": "Simple typo fix in documentation should be auto-fix eligible with high score",
+  "description": "Simple typo fix in documentation should be auto-fix eligible",
   "input": {
     "title": "Typo in add.py: 'teh' should be 'the'",
     "body": "## Description\nIn `src/add.py`, there are typos in the docstring:\n\n- Line 1: `\"\"\"Addition module for teh calculator.\"\"\"` should be `\"\"\"Addition module for the calculator.\"\"\"`\n- Line 8: `Teh first number` should be `The first number`\n\n## Files Affected\n- `src/add.py`\n\n## Suggested Fix\nReplace 'teh' with 'the' and 'Teh' with 'The'."
@@ -9,6 +9,6 @@
   "expected": {
     "decision": "valid",
     "fix_decision": "auto_eligible",
-    "min_score": 80
+    "assignee": "dev-john"
   }
 }

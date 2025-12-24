@@ -42,18 +42,6 @@
           "enum": ["auto_eligible", "manual_required", "comment_only"],
           "description": "Expected fix decision (for analyze stage)"
         },
-        "min_score": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 100,
-          "description": "Minimum expected total score"
-        },
-        "max_score": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 100,
-          "description": "Maximum expected total score"
-        },
         "reason_contains": {
           "type": "array",
           "items": { "type": "string" },
@@ -63,6 +51,15 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Labels that should be applied"
+        },
+        "assignee": {
+          "type": "string",
+          "description": "Expected assignee GitHub ID (for analyze stage)"
+        },
+        "assignee_one_of": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Assignee should be one of these GitHub IDs (for analyze stage)"
         }
       }
     }

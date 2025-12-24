@@ -76,7 +76,6 @@ def analyze(
             typer.echo(f"Summary: {state['analysis_summary']}")
             typer.echo(f"Affected files: {state['affected_files']}")
             typer.echo(f"Approach: {state['fix_approach']}")
-            typer.echo(f"Score: {state['score']}")
             typer.echo(f"Fix decision: {state['fix_decision']}")
 
         typer.echo(f"\nLabels to add: {state.get('labels_to_add', [])}")
@@ -151,7 +150,6 @@ def fix(
             typer.echo(f"Fix failed: {result.get('fix_error', 'Unknown error')}")
     elif result["fix_decision"] != "auto_eligible":
         typer.echo("\nIssue not eligible for auto-fix.")
-        typer.echo(f"Score: {result.get('score', {}).get('total', 'N/A')}/100")
 
     typer.echo(f"\nLabels: {result.get('labels_to_add', [])}")
 
@@ -564,7 +562,7 @@ def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -
             if verbose:
                 typer.secho("  [Analyze Result]", fg=typer.colors.CYAN)
                 typer.echo(f"    fix_decision: {state.get('fix_decision')}")
-                typer.echo(f"    score: {state.get('score')}")
+                typer.echo(f"    assignee: {state.get('assignee')}")
                 typer.echo(f"    summary: {state.get('analysis_summary', '')[:150]}")
                 if state.get("affected_files"):
                     typer.echo(f"    affected_files: {state.get('affected_files')}")
@@ -589,20 +587,21 @@ def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -
                         "reason": f"Expected fix_decision '{expected['fix_decision']}', got '{state.get('fix_decision')}'",
                     }
 
-            if "min_score" in expected:
-                score = state.get("score", {}).get("total", 0)
-                if score < expected["min_score"]:
+            # Check assignee expectations
+            if "assignee" in expected:
+                actual_assignee = state.get("assignee")
+                if actual_assignee != expected["assignee"]:
                     return {
                         "passed": False,
-                        "reason": f"Score {score} below minimum {expected['min_score']}",
+                        "reason": f"Expected assignee '{expected['assignee']}', got '{actual_assignee}'",
                     }
 
-            if "max_score" in expected:
-                score = state.get("score", {}).get("total", 0)
-                if score > expected["max_score"]:
+            if "assignee_one_of" in expected:
+                actual_assignee = state.get("assignee")
+                if actual_assignee not in expected["assignee_one_of"]:
                     return {
                         "passed": False,
-                        "reason": f"Score {score} above maximum {expected['max_score']}",
+                        "reason": f"Expected assignee one of {expected['assignee_one_of']}, got '{actual_assignee}'",
                     }
 
         return {"passed": True, "reason": ""}

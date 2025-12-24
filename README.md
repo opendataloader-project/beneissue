@@ -14,7 +14,7 @@ Drowning in GitHub issues? Install beneissue once, and it handles the rest autom
 |--------|-------|
 | Issue opened → check it days later | Issue opened → instantly classified + labeled |
 | Manually comment "need more info" | Auto-asks specific follow-up questions |
-| Fix simple bugs yourself | Score 80+ issues get auto-PR via Claude Code |
+| Fix simple bugs yourself | Auto-eligible issues get auto-PR via Claude Code |
 
 ## Install once, runs forever
 
@@ -46,7 +46,7 @@ git push
 That's it. From now on:
 
 1. **New issue opened** → automatically triaged and labeled
-2. **High-score issues** → Claude Code creates a PR
+2. **Auto-eligible issues** → Claude Code creates a PR
 3. **Need manual control?** → just comment on the issue
 
 ### Control via issue comments
@@ -66,9 +66,9 @@ Issue opened
     ↓
 [Triage] → valid / invalid / duplicate / needs-info
     ↓
-[Analyze] → affected files, fix approach, score (0-100)
+[Analyze] → affected files, fix approach, checklist
     ↓
-[Fix] → score ≥ 80? → Claude Code creates PR
+[Fix] → auto-eligible? → Claude Code creates PR
 ```
 
 ## Verify it's working
@@ -97,7 +97,6 @@ models:
 policy:
   auto_fix:
     enabled: true
-    min_score: 80  # Minimum score for auto-fix
 ```
 
 ## Labels
@@ -108,8 +107,8 @@ policy:
 | `triage/invalid` | Out of scope or spam |
 | `triage/duplicate` | Already reported |
 | `triage/needs-info` | Waiting for more details |
-| `fix/auto-eligible` | Score ≥ 80, will be auto-fixed |
-| `fix/manual-required` | Score 50-79, needs human |
+| `fix/auto-eligible` | Passes checklist, will be auto-fixed |
+| `fix/manual-required` | Needs human review |
 | `fix/completed` | Auto-fix PR created |
 
 ## CLI (optional)

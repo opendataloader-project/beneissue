@@ -9,6 +9,6 @@
   "expected": {
     "decision": "valid",
     "fix_decision": "comment_only",
-    "max_score": 49
+    "assignee": "pm-jane"
   }
 }
