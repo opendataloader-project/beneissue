@@ -1,0 +1,12 @@
+{
+  "name": "Valid bug report with reproduction steps",
+  "stage": "triage",
+  "input": {
+    "title": "TypeError when parsing empty PDF",
+    "body": "## Description\nWhen parsing an empty PDF file, the application crashes with a TypeError.\n\n## Steps to Reproduce\n1. Create an empty PDF file\n2. Run `parse_pdf('empty.pdf')`\n3. See error\n\n## Expected Behavior\nShould return an empty result or raise a descriptive error.\n\n## Actual Behavior\n```\nTypeError: 'NoneType' object is not iterable\n```\n\n## Environment\n- Python 3.11\n- OS: macOS 14.0"
+  },
+  "expected": {
+    "decision": "valid",
+    "reason_contains": ["reproduction", "error"]
+  }
+}

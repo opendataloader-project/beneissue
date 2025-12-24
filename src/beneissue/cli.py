@@ -213,13 +213,23 @@ def init(
 
         # Create subdirectories
         (skill_dir / "prompts").mkdir(exist_ok=True)
-        (skill_dir / "tests" / "cases").mkdir(parents=True, exist_ok=True)
+        cases_dir = skill_dir / "tests" / "cases"
+        cases_dir.mkdir(parents=True, exist_ok=True)
 
         # Write skill files
         _write_template_file(skill_dir / "SKILL.md", "SKILL.md", "skill definition")
         _write_template_file(
             skill_dir / "beneissue.yml", "skill-config.yml", "skill config"
         )
+
+        # Write example test cases
+        test_case_templates = Path(__file__).parent / "templates" / "test-cases"
+        if test_case_templates.exists():
+            for case_file in test_case_templates.glob("*.json"):
+                dest_file = cases_dir / case_file.name
+                if not dest_file.exists():
+                    dest_file.write_text(case_file.read_text())
+                    typer.echo(f"Created: {dest_file}")
 
     # Create labels
     if not skip_labels:

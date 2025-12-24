@@ -1,0 +1,12 @@
+{
+  "name": "Bug report missing reproduction steps",
+  "stage": "triage",
+  "input": {
+    "title": "App crashes sometimes",
+    "body": "The app crashes when I use it. Please fix."
+  },
+  "expected": {
+    "decision": "needs_info",
+    "reason_contains": ["reproduction", "details"]
+  }
+}
