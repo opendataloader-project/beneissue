@@ -4,8 +4,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from beneissue.config import (
-    DEFAULT_ANALYZE_MODEL,
-    DEFAULT_FIX_MODEL,
     DEFAULT_SCORE_THRESHOLD,
     DEFAULT_TRIAGE_MODEL,
     get_available_assignee,
@@ -22,8 +20,6 @@ class TestLoadConfig:
             config = load_config(Path(tmpdir))
 
             assert config.models.triage == DEFAULT_TRIAGE_MODEL
-            assert config.models.analyze == DEFAULT_ANALYZE_MODEL
-            assert config.models.fix == DEFAULT_FIX_MODEL
             assert config.scoring.threshold == DEFAULT_SCORE_THRESHOLD
 
     def test_load_from_file(self):
@@ -37,7 +33,6 @@ class TestLoadConfig:
 version: "1.0"
 models:
   triage: claude-sonnet-4
-  analyze: claude-opus-4
 scoring:
   threshold: 90
   criteria:
@@ -48,8 +43,6 @@ scoring:
             config = load_config(Path(tmpdir))
 
             assert config.models.triage == "claude-sonnet-4"
-            assert config.models.analyze == "claude-opus-4"
-            assert config.models.fix == DEFAULT_FIX_MODEL  # Not set in file
             assert config.scoring.threshold == 90
             assert config.scoring.criteria.scope == 25
             assert config.scoring.criteria.risk == 25

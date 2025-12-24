@@ -3,10 +3,9 @@
 version: "1.0"
 
 # AI model settings
+# Note: analyze and fix use Claude Code CLI (no model config needed)
 models:
   triage: claude-haiku-4-5    # Fast triage (~$0.02/call)
-  analyze: claude-sonnet-4    # Deep analysis (~$0.10-0.50/call)
-  fix: claude-sonnet-4        # Code generation (~$1-5/call)
 
 # Auto-fix scoring
 scoring:

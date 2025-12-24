@@ -10,8 +10,6 @@ import yaml
 
 # Default values
 DEFAULT_TRIAGE_MODEL = "claude-haiku-4-5"
-DEFAULT_ANALYZE_MODEL = "claude-sonnet-4"
-DEFAULT_FIX_MODEL = "claude-sonnet-4"
 DEFAULT_SCORE_THRESHOLD = 80
 
 # Daily limits (cost control)
@@ -25,11 +23,12 @@ CONFIG_PATH = ".claude/skills/beneissue/beneissue-config.yml"
 
 @dataclass
 class ModelsConfig:
-    """Model configuration."""
+    """Model configuration.
+
+    Note: Only triage uses LangChain API. Analyze and fix use Claude Code CLI.
+    """
 
     triage: str = DEFAULT_TRIAGE_MODEL
-    analyze: str = DEFAULT_ANALYZE_MODEL
-    fix: str = DEFAULT_FIX_MODEL
 
 
 @dataclass
@@ -180,8 +179,6 @@ def load_config(repo_path: Optional[Path] = None) -> BeneissueConfig:
         # Parse models
         if "models" in data:
             config.models.triage = data["models"].get("triage", DEFAULT_TRIAGE_MODEL)
-            config.models.analyze = data["models"].get("analyze", DEFAULT_ANALYZE_MODEL)
-            config.models.fix = data["models"].get("fix", DEFAULT_FIX_MODEL)
 
         # Parse scoring
         if "scoring" in data:
@@ -241,10 +238,6 @@ def load_config(repo_path: Optional[Path] = None) -> BeneissueConfig:
     # Override with environment variables
     if env_triage := os.environ.get("BENEISSUE_MODEL_TRIAGE"):
         config.models.triage = env_triage
-    if env_analyze := os.environ.get("BENEISSUE_MODEL_ANALYZE"):
-        config.models.analyze = env_analyze
-    if env_fix := os.environ.get("BENEISSUE_MODEL_FIX"):
-        config.models.fix = env_fix
     if env_threshold := os.environ.get("BENEISSUE_SCORE_THRESHOLD"):
         config.scoring.threshold = int(env_threshold)
 
