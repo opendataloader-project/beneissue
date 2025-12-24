@@ -48,8 +48,8 @@ def _build_analyze_prompt(state: IssueState) -> str:
 
 def _parse_analyze_response(output: str) -> AnalyzeResult | None:
     """Parse Claude Code output to extract AnalyzeResult."""
-    # Try to extract JSON from code blocks
-    json_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", output, re.DOTALL)
+    # Try to extract JSON from code blocks (greedy match for complete JSON)
+    json_match = re.search(r"```(?:json)?\s*\n?(\{.*\})\s*\n?```", output, re.DOTALL)
     if json_match:
         try:
             data = json.loads(json_match.group(1))
@@ -57,14 +57,30 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
         except (json.JSONDecodeError, ValueError, TypeError):
             pass
 
-    # Try to find raw JSON object with summary key
-    json_match = re.search(r'\{[^{}]*"summary"[^}]*\}', output, re.DOTALL)
-    if json_match:
-        try:
-            data = json.loads(json_match.group(0))
-            return AnalyzeResult(**data)
-        except (json.JSONDecodeError, ValueError, TypeError):
-            pass
+    # Try to find any JSON object that starts with { and contains "summary"
+    # Use a more robust approach: find all { and try to parse from each
+    for match in re.finditer(r'\{', output):
+        start_idx = match.start()
+        # Try to find matching closing brace by counting braces
+        brace_count = 0
+        end_idx = start_idx
+        for i, char in enumerate(output[start_idx:], start=start_idx):
+            if char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    end_idx = i + 1
+                    break
+
+        if end_idx > start_idx:
+            candidate = output[start_idx:end_idx]
+            if '"summary"' in candidate:
+                try:
+                    data = json.loads(candidate)
+                    return AnalyzeResult(**data)
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    continue
 
     # Try parsing entire output as JSON
     try:
