@@ -17,7 +17,7 @@ inputs:
     description: 'LangChain API key for LangSmith tracing'
     required: false
   command:
-    description: 'Command to run (triage, analyze)'
+    description: 'Command to run (triage, analyze, fix)'
     required: false
     default: 'analyze'
   issue-number:
