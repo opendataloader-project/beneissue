@@ -4,9 +4,27 @@
   "description": "Issue about negative numbers should be detected as duplicate of #2",
   "input": {
     "title": "Bug: subtract function gives wrong answer with negative numbers",
-    "body": "## Description\nWhen I use `subtract(5, -3)` the result seems incorrect.\n\n## Steps to Reproduce\n1. Run `subtract(5, -3)`\n2. Get result 8\n\n## Expected\nNot sure what the correct result should be but this feels wrong.\n\n## Notes\nThis might be a duplicate of an existing issue about negative numbers."
+    "body": "## Description\nWhen I use `subtract(5, -3)` the result seems incorrect.\n\n## Steps to Reproduce\n1. Run `subtract(5, -3)`\n2. Get result 8\n\n## Expected\nNot sure what the correct result should be but this feels wrong.\n\n## Notes\nThis might be a duplicate of an existing issue about negative numbers.",
+    "existing_issues": [
+      {
+        "number": 1,
+        "title": "Division by zero causes crash in divide()",
+        "state": "open"
+      },
+      {
+        "number": 2,
+        "title": "Negative number subtraction returns wrong result",
+        "state": "open"
+      },
+      {
+        "number": 3,
+        "title": "Large number multiplication causes overflow",
+        "state": "open"
+      }
+    ]
   },
   "expected": {
-    "decision": "duplicate"
+    "decision": "duplicate",
+    "duplicate_of": 2
   }
 }

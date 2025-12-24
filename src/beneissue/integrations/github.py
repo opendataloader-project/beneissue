@@ -84,8 +84,8 @@ def format_existing_issues(issues: list[dict]) -> str:
 
     lines = []
     for issue in issues:
-        state = "open" if issue["state"] == "open" else "closed"
-        labels = ", ".join(issue["labels"]) if issue["labels"] else ""
+        state = "open" if issue.get("state") == "open" else "closed"
+        labels = ", ".join(issue.get("labels", [])) if issue.get("labels") else ""
         label_str = f" [{labels}]" if labels else ""
         lines.append(f"#{issue['number']} ({state}){label_str}: {issue['title']}")
 

@@ -1,5 +1,6 @@
 """IssueState schema for LangGraph workflow."""
 
+from pathlib import Path
 from typing import Literal, Optional, TypedDict
 
 
@@ -9,6 +10,7 @@ class IssueState(TypedDict, total=False):
     # === Input ===
     repo: str  # owner/repo
     issue_number: int
+    project_root: Path  # Project root path (default: cwd)
     issue_title: str
     issue_body: str
     issue_labels: list[str]

@@ -18,8 +18,9 @@ TRIAGE_PROMPT = PROMPT_PATH.read_text()
 
 def _build_triage_prompt(state: IssueState) -> str:
     """Build the triage prompt with context."""
-    # Read README from repo root
-    readme_path = Path.cwd() / "README.md"
+    # Read README from project root (default: cwd)
+    project_root = state.get("project_root", Path.cwd())
+    readme_path = project_root / "README.md"
     if readme_path.exists():
         readme_content = readme_path.read_text()
     else:

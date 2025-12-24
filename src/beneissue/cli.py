@@ -442,7 +442,7 @@ def test(
         typer.echo(f"RUN  {case_file.name}: {test_name}")
 
         # Run the test
-        result = _run_test_case(test_case)
+        result = _run_test_case(test_case, project_root)
 
         if result["passed"]:
             typer.echo(f"PASS {case_file.name}")
@@ -458,7 +458,7 @@ def test(
         raise typer.Exit(1)
 
 
-def _run_test_case(test_case: dict) -> dict:
+def _run_test_case(test_case: dict, project_root: Path) -> dict:
     """Run a single test case and return result."""
     from beneissue.nodes.analyze import analyze_node
     from beneissue.nodes.triage import triage_node
@@ -471,10 +471,12 @@ def _run_test_case(test_case: dict) -> dict:
     state = {
         "repo": "test/repo",
         "issue_number": 1,
+        "project_root": project_root.resolve(),
         "issue_title": input_data.get("title", ""),
         "issue_body": input_data.get("body", ""),
         "issue_labels": [],
         "issue_author": "test-user",
+        "existing_issues": input_data.get("existing_issues", []),
     }
 
     try:
@@ -498,6 +500,13 @@ def _run_test_case(test_case: dict) -> dict:
                         "passed": False,
                         "reason": f"Reason missing keyword '{keyword}'",
                     }
+
+        if "duplicate_of" in expected:
+            if state.get("duplicate_of") != expected["duplicate_of"]:
+                return {
+                    "passed": False,
+                    "reason": f"Expected duplicate_of {expected['duplicate_of']}, got {state.get('duplicate_of')}",
+                }
 
         # Run analyze if needed
         if stage == "analyze" and state.get("triage_decision") == "valid":
