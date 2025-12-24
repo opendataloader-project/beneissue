@@ -182,7 +182,7 @@ def init(
     """Initialize beneissue in the current repository.
 
     Creates:
-    - .github/workflows/beneissue.yml (GitHub Action workflow)
+    - .github/workflows/beneissue-workflow.yml (GitHub Action workflow)
     - .claude/skills/beneissue/ (Claude skill directory)
     - GitHub labels for triage and fix status
     """
@@ -203,8 +203,8 @@ def init(
     if not skip_workflow:
         workflow_dir = Path(".github/workflows")
         workflow_dir.mkdir(parents=True, exist_ok=True)
-        workflow_file = workflow_dir / "beneissue.yml"
-        _write_template_file(workflow_file, "beneissue.yml", "workflow")
+        workflow_file = workflow_dir / "beneissue-workflow.yml"
+        _write_template_file(workflow_file, "beneissue-workflow.yml", "workflow")
 
     # Create Claude skill directory
     if not skip_skill:
@@ -219,7 +219,7 @@ def init(
         # Write skill files
         _write_template_file(skill_dir / "SKILL.md", "SKILL.md", "skill definition")
         _write_template_file(
-            skill_dir / "beneissue.yml", "skill-config.yml", "skill config"
+            skill_dir / "beneissue-config.yml", "beneissue-config.yml", "skill config"
         )
 
         # Write example test cases
@@ -264,7 +264,7 @@ def init(
     typer.echo("   - ANTHROPIC_API_KEY (required)")
     typer.echo("   - LANGCHAIN_API_KEY (optional, for LangSmith tracing)")
     typer.echo("\n2. Commit and push the files:")
-    typer.echo("   git add .github/workflows/beneissue.yml .claude/")
+    typer.echo("   git add .github/workflows/beneissue-workflow.yml .claude/")
     typer.echo("   git commit -m 'Add beneissue automation'")
     typer.echo("   git push")
     typer.echo("\n3. Create an issue to test!")

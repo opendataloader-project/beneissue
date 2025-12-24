@@ -1,30 +1,39 @@
 ---
 name: beneissue
-description: Process GitHub issues with AI-powered triage, analysis, and auto-fix. Use when processing new issues, categorizing bugs, or attempting automatic fixes.
+description: AI-powered GitHub issue automation. Automatically triages, analyzes, and fixes issues.
 ---
 
 # beneissue
 
-GitHub 이슈를 AI로 자동 처리합니다.
+Automatically process GitHub issues with AI.
 
-## Commands
+## What it does
 
-- `beneissue triage <repo> --issue <number>`: 이슈 분류 (라벨 적용 안함)
-- `beneissue analyze <repo> --issue <number>`: 이슈 분석 및 라벨/코멘트 적용
-- `beneissue fix <repo> --issue <number>`: 자동 수정 시도 (eligible한 경우)
+When an issue is opened:
+1. **Triage** → classifies as valid/invalid/duplicate/needs-info
+2. **Analyze** → identifies affected files, fix approach, scores fixability
+3. **Fix** → if score ≥ 80, Claude Code creates a PR
 
-## Workflow
+## Issue comment commands
 
-1. **Triage**: 이슈가 valid/invalid/duplicate/needs_info 인지 분류
-2. **Analyze**: valid 이슈에 대해 영향 범위, 수정 방법, 자동수정 점수 분석
-3. **Fix**: 점수가 80점 이상이면 Claude Code로 자동 수정 시도
+```
+@beneissue triage    # Re-classify this issue
+@beneissue analyze   # Run full analysis
+@beneissue fix       # Attempt auto-fix
+```
 
 ## Configuration
 
-설정 파일: `.claude/skills/beneissue/beneissue.yml`
+Edit `beneissue-config.yml` in this directory to customize:
+- Models (triage, analyze)
+- Auto-fix policy (enabled, min_score)
+- Project description for AI context
 
-## Policy Tests
+## Labels applied
 
-테스트 케이스: `.claude/skills/beneissue/tests/cases/*.json`
-
-실행: `beneissue test`
+| Label | Meaning |
+|-------|---------|
+| `triage/valid` | Ready for analysis |
+| `triage/needs-info` | Waiting for details |
+| `fix/auto-eligible` | Will be auto-fixed |
+| `fix/completed` | PR created |

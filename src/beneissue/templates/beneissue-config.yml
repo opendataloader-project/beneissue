@@ -1,0 +1,21 @@
+# beneissue configuration
+# Location: .claude/skills/beneissue/beneissue-config.yml
+version: "1.0"
+
+project:
+  name: ""  # Project name (leave empty to use repo name)
+  # description: |
+  #   Brief description of your project.
+  #   Include any special triage rules here.
+
+# Model settings (optional)
+# Default: triage=claude-haiku-4-5, analyze=claude-sonnet-4
+# models:
+#   triage: claude-haiku-4-5
+#   analyze: claude-sonnet-4
+
+# Auto-fix policy (optional)
+# policy:
+#   auto_fix:
+#     enabled: true
+#     min_score: 80  # Minimum score for auto-fix (0-100)

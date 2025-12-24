@@ -60,7 +60,7 @@ When issues get these labels automatically, you're set:
 
 ## Configuration
 
-Edit `.claude/skills/beneissue/beneissue.yml`:
+Edit `.claude/skills/beneissue/beneissue-config.yml`:
 
 ```yaml
 version: "1.0"

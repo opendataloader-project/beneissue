@@ -15,7 +15,7 @@ DEFAULT_FIX_MODEL = "claude-sonnet-4"
 DEFAULT_AUTO_FIX_MIN_SCORE = 80
 
 # Config file path
-CONFIG_PATH = ".claude/skills/beneissue/beneissue.yml"
+CONFIG_PATH = ".claude/skills/beneissue/beneissue-config.yml"
 
 
 @dataclass
@@ -65,7 +65,7 @@ def load_config(repo_path: Optional[Path] = None) -> BeneissueConfig:
 
     Priority (highest to lowest):
     1. Environment variables (BENEISSUE_MODEL_TRIAGE, etc.)
-    2. Repo config file (.claude/skills/beneissue/beneissue.yml)
+    2. Repo config file (.claude/skills/beneissue/beneissue-config.yml)
     3. Package defaults
 
     Args:
