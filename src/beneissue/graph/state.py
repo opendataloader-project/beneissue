@@ -30,10 +30,10 @@ class IssueState(TypedDict, total=False):
     # === Analyze 결과 ===
     analysis_summary: str
     affected_files: list[str]
-    fix_approach: str
     score: dict
     fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
     comment_draft: Optional[str]  # Comment for manual-required or comment-only
+    assignee: Optional[str]  # Recommended assignee GitHub ID
 
     # === Fix 결과 ===
     fix_success: bool

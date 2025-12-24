@@ -10,7 +10,7 @@ from typing import Literal
 
 from langsmith import traceable
 
-from beneissue.config import load_config
+from beneissue.config import get_available_assignee, load_config
 from beneissue.graph.state import IssueState
 from beneissue.nodes.schemas import AnalyzeResult
 
@@ -46,7 +46,7 @@ def _build_analyze_prompt(state: IssueState) -> str:
     # Claude Code will explore the codebase directly
     system_context = ANALYZE_PROMPT.format(
         project_description=project_desc,
-        codebase_structure="Use Glob and Read tools to explore the codebase.",
+        codebase_instruction="Search the entire repository for relevant files.",
     )
 
     return f"""{system_context}
@@ -73,9 +73,8 @@ def _build_analyze_prompt(state: IssueState) -> str:
 
 ```json
 {{
-  "summary": "Brief summary of the issue and what needs to be done",
+  "summary": "2-3 sentences: what the issue is, why it occurs, and how to fix",
   "affected_files": ["path/to/file1.py", "path/to/file2.py"],
-  "approach": "Recommended approach to fix the issue",
   "score": {{
     "total": 85,
     "scope": 25,
@@ -85,7 +84,7 @@ def _build_analyze_prompt(state: IssueState) -> str:
   }},
   "priority": "P2",
   "story_points": 2,
-  "labels": ["bug", "backend"],
+  "labels": ["bug"],
   "comment_draft": null
 }}
 ```
@@ -136,7 +135,6 @@ def analyze_node(state: IssueState) -> dict:
 
         # Clone the repository
         if not _clone_repo(state["repo"], repo_path):
-            # Fallback: return minimal analysis without codebase access
             return _fallback_analyze("Failed to clone repository")
 
         try:
@@ -168,7 +166,6 @@ def analyze_node(state: IssueState) -> dict:
             if response:
                 return _build_result(response, config)
             else:
-                # Parsing failed, return fallback
                 return _fallback_analyze(
                     f"Failed to parse analysis output: {stdout[:200]}"
                 )
@@ -187,25 +184,28 @@ def analyze_node(state: IssueState) -> dict:
 
 def _build_result(response: AnalyzeResult, config) -> dict:
     """Build the result dict from AnalyzeResult."""
-    min_score = config.policy.auto_fix.min_score
+    threshold = config.scoring.threshold
     fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
 
-    if config.policy.auto_fix.enabled and response.score.total >= min_score:
+    if response.score.total >= threshold:
         fix_decision = "auto_eligible"
     elif response.score.total >= 50:
         fix_decision = "manual_required"
     else:
         fix_decision = "comment_only"
 
+    # Get assignee based on labels (specialties)
+    assignee = get_available_assignee(config, specialties=response.labels)
+
     return {
         "analysis_summary": response.summary,
         "affected_files": response.affected_files,
-        "fix_approach": response.approach,
         "score": response.score.model_dump(),
         "fix_decision": fix_decision,
         "comment_draft": response.comment_draft,
+        "assignee": assignee,
         "labels_to_add": [
-            f"priority/{response.priority.lower()}",
+            response.priority,
             f"sp/{response.story_points}",
             f"fix/{fix_decision.replace('_', '-')}",
             *response.labels,
@@ -218,11 +218,9 @@ def _fallback_analyze(error: str) -> dict:
     return {
         "analysis_summary": f"Analysis incomplete: {error}",
         "affected_files": [],
-        "fix_approach": "Manual investigation required",
         "score": {"total": 0, "scope": 0, "risk": 0, "verifiability": 0, "clarity": 0},
         "fix_decision": "manual_required",
         "comment_draft": f"Automated analysis encountered an issue: {error}\n\nPlease investigate manually.",
+        "assignee": None,
         "labels_to_add": ["fix/manual-required"],
     }
-
-

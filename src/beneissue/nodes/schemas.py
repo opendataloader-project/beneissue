@@ -27,11 +27,10 @@ class ScoreBreakdown(BaseModel):
 class AnalyzeResult(BaseModel):
     """Analyze node output schema."""
 
-    summary: str
+    summary: str  # 2-3 sentences: what, why, how
     affected_files: list[str]
-    approach: str
     score: ScoreBreakdown
     priority: Literal["P0", "P1", "P2"]
     story_points: Literal[1, 2, 3, 5, 8]
-    labels: list[str]
-    comment_draft: Optional[str] = None  # Comment for manual-required or comment-only cases
+    labels: list[str]  # bug, enhancement, documentation
+    comment_draft: Optional[str] = None  # For manual-required or comment-only
