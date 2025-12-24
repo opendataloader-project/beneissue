@@ -194,7 +194,7 @@ def init(
         workflow_dir = Path(".github/workflows")
         workflow_dir.mkdir(parents=True, exist_ok=True)
         workflow_file = workflow_dir / "beneissue-workflow.yml"
-        _write_template_file(workflow_file, "beneissue-workflow.yml", "workflow")
+        _write_template_file(workflow_file, ".github/workflows/beneissue-workflow.yml", "workflow")
 
     # Create Claude skill directory
     if not skip_skill:
@@ -207,13 +207,13 @@ def init(
         cases_dir.mkdir(parents=True, exist_ok=True)
 
         # Write skill files
-        _write_template_file(skill_dir / "SKILL.md", "SKILL.md", "skill definition")
+        _write_template_file(skill_dir / "SKILL.md", ".claude/skills/SKILL.md", "skill definition")
         _write_template_file(
-            skill_dir / "beneissue-config.yml", "beneissue-config.yml", "skill config"
+            skill_dir / "beneissue-config.yml", ".claude/skills/beneissue-config.yml", "skill config"
         )
 
         # Write example test cases
-        test_case_templates = Path(__file__).parent / "templates" / "test-cases"
+        test_case_templates = Path(__file__).parent / "templates" / ".claude" / "skills" / "test-cases"
         if test_case_templates.exists():
             for case_file in test_case_templates.glob("*.json"):
                 dest_file = cases_dir / case_file.name
