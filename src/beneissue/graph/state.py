@@ -18,6 +18,7 @@ class IssueState(TypedDict, total=False):
     triage_decision: Literal["valid", "invalid", "duplicate", "needs_info"]
     triage_reason: str
     duplicate_of: Optional[int]
+    triage_questions: Optional[list[str]]  # Questions for needs_info
 
     # === Analyze 결과 ===
     analysis_summary: str
@@ -25,6 +26,7 @@ class IssueState(TypedDict, total=False):
     fix_approach: str
     score: dict
     fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
+    comment_draft: Optional[str]  # Comment for manual-required or comment-only
 
     # === Fix 결과 ===
     fix_success: bool

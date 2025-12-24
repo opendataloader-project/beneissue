@@ -22,14 +22,30 @@ TRIAGE_LABELS = {
 }
 
 
+def _build_triage_prompt(state: IssueState) -> str:
+    """Build the triage prompt with context."""
+    config = load_config()
+    project_desc = config.project.description or f"Repository: {state['repo']}"
+
+    # TODO: Fetch existing issues for duplicate detection
+    existing_issues = "No existing issues loaded."
+
+    return TRIAGE_PROMPT.format(
+        project_description=project_desc,
+        existing_issues=existing_issues,
+    )
+
+
 def triage_node(state: IssueState) -> dict:
     """Classify an issue using Claude."""
     config = load_config()
     llm = ChatAnthropic(model=config.models.triage)
 
+    system_prompt = _build_triage_prompt(state)
+
     response = llm.with_structured_output(TriageResult).invoke(
         [
-            SystemMessage(content=TRIAGE_PROMPT),
+            SystemMessage(content=system_prompt),
             HumanMessage(
                 content=f"Title: {state['issue_title']}\n\n{state['issue_body']}"
             ),
@@ -40,5 +56,6 @@ def triage_node(state: IssueState) -> dict:
         "triage_decision": response.decision,
         "triage_reason": response.reason,
         "duplicate_of": response.duplicate_of,
+        "triage_questions": response.questions,
         "labels_to_add": TRIAGE_LABELS.get(response.decision, []),
     }

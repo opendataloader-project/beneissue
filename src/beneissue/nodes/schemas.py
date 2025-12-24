@@ -11,6 +11,7 @@ class TriageResult(BaseModel):
     decision: Literal["valid", "invalid", "duplicate", "needs_info"]
     reason: str
     duplicate_of: Optional[int] = None
+    questions: Optional[list[str]] = None  # Questions to ask when needs_info
 
 
 class ScoreBreakdown(BaseModel):
@@ -33,3 +34,4 @@ class AnalyzeResult(BaseModel):
     priority: Literal["P0", "P1", "P2"]
     story_points: Literal[1, 2, 3, 5, 8]
     labels: list[str]
+    comment_draft: Optional[str] = None  # Comment for manual-required or comment-only cases
