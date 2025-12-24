@@ -522,41 +522,42 @@ def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -
     }
 
     try:
-        # Run triage
-        triage_result = triage_node(state)
-        state.update(triage_result)
+        # Run triage (skip for analyze-only tests)
+        if stage == "triage":
+            triage_result = triage_node(state)
+            state.update(triage_result)
 
-        if verbose:
-            typer.secho("  [Triage Result]", fg=typer.colors.CYAN)
-            typer.echo(f"    decision: {state.get('triage_decision')}")
-            typer.echo(f"    reason: {state.get('triage_reason', '')[:100]}")
+            if verbose:
+                typer.secho("  [Triage Result]", fg=typer.colors.CYAN)
+                typer.echo(f"    decision: {state.get('triage_decision')}")
+                typer.echo(f"    reason: {state.get('triage_reason', '')[:100]}")
 
-        # Check triage expectations
-        if "decision" in expected:
-            if state.get("triage_decision") != expected["decision"]:
-                return {
-                    "passed": False,
-                    "reason": f"Expected decision '{expected['decision']}', got '{state.get('triage_decision')}'",
-                }
-
-        if "reason_contains" in expected:
-            reason = state.get("triage_reason", "")
-            for keyword in expected["reason_contains"]:
-                if keyword.lower() not in reason.lower():
+            # Check triage expectations
+            if "decision" in expected:
+                if state.get("triage_decision") != expected["decision"]:
                     return {
                         "passed": False,
-                        "reason": f"Reason missing keyword '{keyword}'",
+                        "reason": f"Expected decision '{expected['decision']}', got '{state.get('triage_decision')}'",
                     }
 
-        if "duplicate_of" in expected:
-            if state.get("duplicate_of") != expected["duplicate_of"]:
-                return {
-                    "passed": False,
-                    "reason": f"Expected duplicate_of {expected['duplicate_of']}, got {state.get('duplicate_of')}",
-                }
+            if "reason_contains" in expected:
+                reason = state.get("triage_reason", "")
+                for keyword in expected["reason_contains"]:
+                    if keyword.lower() not in reason.lower():
+                        return {
+                            "passed": False,
+                            "reason": f"Reason missing keyword '{keyword}'",
+                        }
+
+            if "duplicate_of" in expected:
+                if state.get("duplicate_of") != expected["duplicate_of"]:
+                    return {
+                        "passed": False,
+                        "reason": f"Expected duplicate_of {expected['duplicate_of']}, got {state.get('duplicate_of')}",
+                    }
 
         # Run analyze if needed
-        if stage == "analyze" and state.get("triage_decision") == "valid":
+        if stage == "analyze":
             analyze_result = analyze_node(state)
             state.update(analyze_result)
 
