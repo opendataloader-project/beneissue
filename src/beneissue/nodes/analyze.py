@@ -76,11 +76,60 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
     return None
 
 
+def _run_analysis(repo_path: str, prompt: str, config) -> dict:
+    """Run Claude Code analysis on a repository path."""
+    try:
+        result = subprocess.run(
+            [
+                "claude",
+                "-p",
+                prompt,
+                "--allowedTools",
+                "Read,Glob,Grep",
+                "--output-format",
+                "text",
+            ],
+            capture_output=True,
+            timeout=CLAUDE_CODE_TIMEOUT,
+            cwd=repo_path,
+            env={
+                **os.environ,
+                "ANTHROPIC_API_KEY": os.environ.get("ANTHROPIC_API_KEY", ""),
+            },
+        )
+
+        stdout = result.stdout.decode() if result.stdout else ""
+
+        response = _parse_analyze_response(stdout)
+
+        if response:
+            return _build_result(response, config)
+        else:
+            return _fallback_analyze(
+                f"Failed to parse analysis output: {stdout[:200]}"
+            )
+
+    except subprocess.TimeoutExpired:
+        return _fallback_analyze(
+            f"Analysis timeout after {CLAUDE_CODE_TIMEOUT} seconds"
+        )
+    except FileNotFoundError:
+        return _fallback_analyze(
+            "Claude Code CLI not installed. Run: npm install -g @anthropic-ai/claude-code"
+        )
+    except Exception as e:
+        return _fallback_analyze(str(e)[:200])
+
+
 @traceable(name="claude_code_analyze", run_type="chain")
 def analyze_node(state: IssueState) -> dict:
     """Analyze an issue using Claude Code CLI."""
     config = load_config()
     prompt = _build_analyze_prompt(state)
+
+    # Use project_root if provided (for testing), otherwise clone
+    if state.get("project_root"):
+        return _run_analysis(str(state["project_root"]), prompt, config)
 
     # Create temporary directory for the repo
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -90,49 +139,7 @@ def analyze_node(state: IssueState) -> dict:
         if not _clone_repo(state["repo"], repo_path):
             return _fallback_analyze("Failed to clone repository")
 
-        try:
-            # Run Claude Code with read-only tools
-            result = subprocess.run(
-                [
-                    "claude",
-                    "-p",
-                    prompt,
-                    "--allowedTools",
-                    "Read,Glob,Grep",
-                    "--output-format",
-                    "text",
-                ],
-                capture_output=True,
-                timeout=CLAUDE_CODE_TIMEOUT,
-                cwd=repo_path,
-                env={
-                    **os.environ,
-                    "ANTHROPIC_API_KEY": os.environ.get("ANTHROPIC_API_KEY", ""),
-                },
-            )
-
-            stdout = result.stdout.decode() if result.stdout else ""
-
-            # Parse the response
-            response = _parse_analyze_response(stdout)
-
-            if response:
-                return _build_result(response, config)
-            else:
-                return _fallback_analyze(
-                    f"Failed to parse analysis output: {stdout[:200]}"
-                )
-
-        except subprocess.TimeoutExpired:
-            return _fallback_analyze(
-                f"Analysis timeout after {CLAUDE_CODE_TIMEOUT} seconds"
-            )
-        except FileNotFoundError:
-            return _fallback_analyze(
-                "Claude Code CLI not installed. Run: npm install -g @anthropic-ai/claude-code"
-            )
-        except Exception as e:
-            return _fallback_analyze(str(e)[:200])
+        return _run_analysis(repo_path, prompt, config)
 
 
 def _build_result(response: AnalyzeResult, config) -> dict:

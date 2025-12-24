@@ -383,6 +383,9 @@ def test(
     dry_run: bool = typer.Option(
         False, "--dry-run", "-n", help="Validate test cases without running AI"
     ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show detailed output including LLM responses"
+    ),
 ) -> None:
     """Run policy tests from test cases in the repository.
 
@@ -452,7 +455,7 @@ def test(
 
         # Run the test with timing
         start_time = time.perf_counter()
-        result = _run_test_case(test_case, project_root)
+        result = _run_test_case(test_case, project_root, verbose=verbose)
         elapsed = time.perf_counter() - start_time
         total_time += elapsed
 
@@ -496,7 +499,7 @@ def test(
         raise typer.Exit(1)
 
 
-def _run_test_case(test_case: dict, project_root: Path) -> dict:
+def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -> dict:
     """Run a single test case and return result."""
     from beneissue.nodes.analyze import analyze_node
     from beneissue.nodes.triage import triage_node
@@ -521,6 +524,11 @@ def _run_test_case(test_case: dict, project_root: Path) -> dict:
         # Run triage
         triage_result = triage_node(state)
         state.update(triage_result)
+
+        if verbose:
+            typer.secho("  [Triage Result]", fg=typer.colors.CYAN)
+            typer.echo(f"    decision: {state.get('triage_decision')}")
+            typer.echo(f"    reason: {state.get('triage_reason', '')[:100]}")
 
         # Check triage expectations
         if "decision" in expected:
@@ -550,6 +558,27 @@ def _run_test_case(test_case: dict, project_root: Path) -> dict:
         if stage == "analyze" and state.get("triage_decision") == "valid":
             analyze_result = analyze_node(state)
             state.update(analyze_result)
+
+            if verbose:
+                typer.secho("  [Analyze Result]", fg=typer.colors.CYAN)
+                typer.echo(f"    fix_decision: {state.get('fix_decision')}")
+                typer.echo(f"    score: {state.get('score')}")
+                typer.echo(f"    summary: {state.get('analysis_summary', '')[:150]}")
+                if state.get("affected_files"):
+                    typer.echo(f"    affected_files: {state.get('affected_files')}")
+
+            # Check for CLI errors
+            summary = state.get("analysis_summary", "")
+            if "Claude Code CLI not installed" in summary:
+                return {
+                    "passed": False,
+                    "reason": "Claude Code CLI not installed. Run: npm install -g @anthropic-ai/claude-code",
+                }
+            if summary.startswith("Analysis incomplete:"):
+                return {
+                    "passed": False,
+                    "reason": summary,
+                }
 
             if "fix_decision" in expected:
                 if state.get("fix_decision") != expected["fix_decision"]:
