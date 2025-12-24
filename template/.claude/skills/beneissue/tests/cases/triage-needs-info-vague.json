@@ -1,0 +1,12 @@
+{
+  "name": "Needs info - vague bug report",
+  "stage": "triage",
+  "description": "Vague bug report without details should request more information",
+  "input": {
+    "title": "Calculator broken",
+    "body": "The calculator doesn't work. Please fix."
+  },
+  "expected": {
+    "decision": "needs_info"
+  }
+}

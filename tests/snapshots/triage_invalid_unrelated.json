@@ -1,9 +1,0 @@
-{
-  "triage_decision": "invalid",
-  "triage_reason": "This issue is about cooking pasta and is completely unrelated to the OpenDataLoader-PDF project. It is spam/off-topic content that does not pertain to PDF processing, document conversion, or any software development work related to this project.",
-  "duplicate_of": null,
-  "triage_questions": null,
-  "labels_to_add": [
-    "triage/invalid"
-  ]
-}

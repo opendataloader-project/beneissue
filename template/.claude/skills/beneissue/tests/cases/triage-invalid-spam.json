@@ -1,0 +1,12 @@
+{
+  "name": "Invalid - spam content",
+  "stage": "triage",
+  "description": "Spam or advertising content should be classified as invalid",
+  "input": {
+    "title": "Best crypto investment opportunity 2024!",
+    "body": "Make $10,000 daily with our exclusive crypto trading bot! Click here to join now: [link removed]\n\nLimited time offer - 500% returns guaranteed!\n\nContact us on Telegram: @scammer123"
+  },
+  "expected": {
+    "decision": "invalid"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Duplicate - negative number bug already reported",
+  "stage": "triage",
+  "description": "Issue about negative numbers should be detected as duplicate of #2",
+  "input": {
+    "title": "Bug: subtract function gives wrong answer with negative numbers",
+    "body": "## Description\nWhen I use `subtract(5, -3)` the result seems incorrect.\n\n## Steps to Reproduce\n1. Run `subtract(5, -3)`\n2. Get result 8\n\n## Expected\nNot sure what the correct result should be but this feels wrong.\n\n## Notes\nThis might be a duplicate of an existing issue about negative numbers."
+  },
+  "expected": {
+    "decision": "duplicate"
+  }
+}

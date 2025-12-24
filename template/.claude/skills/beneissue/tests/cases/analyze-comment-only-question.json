@@ -1,0 +1,14 @@
+{
+  "name": "Comment only - usage question",
+  "stage": "analyze",
+  "description": "Usage question that requires no code change, only explanation",
+  "input": {
+    "title": "How do I use the calculator with floating point numbers?",
+    "body": "## Question\nI'm trying to use the calculator but I'm not sure if it supports floating point numbers.\n\nCan I do something like `add(3.14, 2.86)`?\n\nAlso, what's the maximum precision supported?\n\n## Environment\n- Python 3.11\n- Using the CLI interface"
+  },
+  "expected": {
+    "decision": "valid",
+    "fix_decision": "comment_only",
+    "max_score": 49
+  }
+}

@@ -1,9 +1,0 @@
-{
-  "triage_decision": "invalid",
-  "triage_reason": "This is clearly spam/advertising content completely unrelated to the OpenDataLoader-PDF project. It's a promotional email for consumer electronics deals with no connection to PDF processing, AI, or software development.",
-  "duplicate_of": null,
-  "triage_questions": null,
-  "labels_to_add": [
-    "triage/invalid"
-  ]
-}
