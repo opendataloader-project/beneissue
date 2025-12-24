@@ -178,8 +178,9 @@ def analyze_node(state: IssueState) -> dict:
                 f"Analysis timeout after {CLAUDE_CODE_TIMEOUT} seconds"
             )
         except FileNotFoundError:
-            # Claude Code not installed, fallback to API-only analysis
-            return _fallback_analyze_api(state, config)
+            return _fallback_analyze(
+                "Claude Code CLI not installed. Run: npm install -g @anthropic-ai/claude-code"
+            )
         except Exception as e:
             return _fallback_analyze(str(e)[:200])
 
@@ -225,32 +226,3 @@ def _fallback_analyze(error: str) -> dict:
     }
 
 
-def _fallback_analyze_api(state: IssueState, config) -> dict:
-    """Fallback to LangChain API when Claude Code CLI is not available."""
-    from langchain_anthropic import ChatAnthropic
-    from langchain_core.messages import HumanMessage, SystemMessage
-
-    llm = ChatAnthropic(model=config.models.analyze)
-
-    project_desc = config.project.description or f"Repository: {state['repo']}"
-
-    system_prompt = ANALYZE_PROMPT.format(
-        project_description=project_desc,
-        codebase_structure="Codebase structure not available (API fallback mode).",
-    )
-
-    response = llm.with_structured_output(AnalyzeResult).invoke(
-        [
-            SystemMessage(content=system_prompt),
-            HumanMessage(
-                content=f"""Issue: {state['issue_title']}
-
-{state['issue_body']}
-
-Repository: {state['repo']}
-"""
-            ),
-        ]
-    )
-
-    return _build_result(response, config)
