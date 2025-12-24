@@ -19,14 +19,14 @@ class IssueState(TypedDict, total=False):
     triage_reason: str
     duplicate_of: Optional[int]
 
-    # === Analyze 결과 (PoC 이후 구현) ===
-    # analysis_summary: str
-    # affected_files: list[str]
-    # fix_approach: str
-    # score: dict
-    # fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
+    # === Analyze 결과 ===
+    analysis_summary: str
+    affected_files: list[str]
+    fix_approach: str
+    score: dict
+    fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
 
-    # === Fix 결과 (PoC 이후 구현) ===
+    # === Fix 결과 (v0.5.0 이후 구현) ===
     # fix_success: bool
     # pr_url: Optional[str]
     # fix_error: Optional[str]
