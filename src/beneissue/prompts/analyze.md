@@ -1,36 +1,39 @@
-Perform deep analysis for GitHub issue using the ai-issue skill.
+Analyze GitHub issue and determine fix approach.
 
 **Title**: {issue_title}
 
 **Body**:
 {issue_body}
 
-## Instructions
-1. Read skill files in .claude/skills/beneissue/beneissue-config.yml
-2. Analyze codebase to identify affected files and root cause
-3. Score: Scope(0-30), Risk(0-30), Verifiability(0-25), Clarity(0-15)
-4. Action: score >= threshold → "fix/auto-eligible", else → "fix/manual-required", no code → "fix/comment-only"
-5. Select labels, priority, story_points, assignee per policies
+## Classification Rules
 
-## Output
+### Step 1: Code change needed?
+- No (docs question, usage help, discussion) → **comment_only**
+- Yes → Step 2
 
-Return your analysis as JSON:
+### Step 2: Auto-fix eligible? (ALL must be true)
+- [ ] affected_files ≤ 3
+- [ ] Testable (existing tests or clear verification)
+- [ ] Uses existing patterns (no new architecture)
+- [ ] No security/auth code changes
+
+All true → **auto_eligible**, otherwise → **manual_required**
+
+## Team (from .claude/skills/beneissue/beneissue-config.yml)
+Read the config file to find available team members and their specialties for assignee selection.
+
+## Output (JSON only)
 
 ```json
 {{
-  "summary": "2-3 sentences: what the issue is, why it occurs, and how to fix",
-  "affected_files": ["path/to/file1.py", "path/to/file2.py"],
-  "score": {{
-    "total": 85,
-    "scope": 25,
-    "risk": 25,
-    "verifiability": 20,
-    "clarity": 15
-  }},
+  "summary": "2-3 sentences: what the issue is, root cause, fix approach",
+  "affected_files": ["path/to/file.py"],
+  "fix_decision": "auto_eligible | manual_required | comment_only",
+  "reason": "1-sentence justification for fix_decision",
   "priority": "P0 | P1 | P2",
   "story_points": 1 | 2 | 3 | 5 | 8,
   "labels": ["bug"],
-  "assignee": "github_username from team config, or null if none suitable",
-  "comment_draft": "null, or guidance for issue author if fix/comment-only"
+  "assignee": "github_id or null",
+  "comment_draft": "null, or response if comment_only"
 }}
 ```

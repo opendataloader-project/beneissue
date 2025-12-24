@@ -6,11 +6,8 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Literal
-
 from langsmith import traceable
 
-from beneissue.config import load_config
 from beneissue.graph.state import IssueState
 from beneissue.nodes.schemas import AnalyzeResult
 
@@ -92,7 +89,7 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
     return None
 
 
-def _run_analysis(repo_path: str, prompt: str, config, *, verbose: bool = False) -> dict:
+def _run_analysis(repo_path: str, prompt: str, *, verbose: bool = False) -> dict:
     """Run Claude Code analysis on a repository path."""
     try:
         cmd = [
@@ -121,7 +118,7 @@ def _run_analysis(repo_path: str, prompt: str, config, *, verbose: bool = False)
         response = _parse_analyze_response(stdout)
 
         if response:
-            return _build_result(response, config)
+            return _build_result(response)
         else:
             return _fallback_analyze(f"Failed to parse analysis output: {stdout[:200]}")
 
@@ -140,13 +137,12 @@ def _run_analysis(repo_path: str, prompt: str, config, *, verbose: bool = False)
 @traceable(name="claude_code_analyze", run_type="chain")
 def analyze_node(state: IssueState) -> dict:
     """Analyze an issue using Claude Code CLI."""
-    config = load_config()
     prompt = _build_analyze_prompt(state)
     verbose = state.get("verbose", False)
 
     # Use project_root if provided (for testing), otherwise clone
     if state.get("project_root"):
-        return _run_analysis(str(state["project_root"]), prompt, config, verbose=verbose)
+        return _run_analysis(str(state["project_root"]), prompt, verbose=verbose)
 
     # Create temporary directory for the repo
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -156,31 +152,21 @@ def analyze_node(state: IssueState) -> dict:
         if not _clone_repo(state["repo"], repo_path):
             return _fallback_analyze("Failed to clone repository")
 
-        return _run_analysis(repo_path, prompt, config, verbose=verbose)
+        return _run_analysis(repo_path, prompt, verbose=verbose)
 
 
-def _build_result(response: AnalyzeResult, config) -> dict:
+def _build_result(response: AnalyzeResult) -> dict:
     """Build the result dict from AnalyzeResult."""
-    threshold = config.scoring.threshold
-    fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
-
-    if response.score.total >= threshold:
-        fix_decision = "auto_eligible"
-    elif response.score.total >= 50:
-        fix_decision = "manual_required"
-    else:
-        fix_decision = "comment_only"
-
     return {
         "analysis_summary": response.summary,
         "affected_files": response.affected_files,
-        "score": response.score.model_dump(),
+        "fix_decision": response.fix_decision,
+        "fix_reason": response.reason,
         "priority": response.priority,
         "story_points": response.story_points,
-        "fix_decision": fix_decision,
         "comment_draft": response.comment_draft,
         "assignee": response.assignee,
-        "labels_to_add": [f"fix/{fix_decision.replace('_', '-')}"],
+        "labels_to_add": [f"fix/{response.fix_decision.replace('_', '-')}"],
     }
 
 
@@ -189,8 +175,8 @@ def _fallback_analyze(error: str) -> dict:
     return {
         "analysis_summary": f"Analysis incomplete: {error}",
         "affected_files": [],
-        "score": {"total": 0, "scope": 0, "risk": 0, "verifiability": 0, "clarity": 0},
         "fix_decision": "manual_required",
+        "fix_reason": f"Analysis failed: {error}",
         "comment_draft": f"Automated analysis encountered an issue: {error}\n\nPlease investigate manually.",
         "assignee": None,
         "labels_to_add": ["fix/manual-required"],

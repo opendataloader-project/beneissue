@@ -32,10 +32,10 @@ class IssueState(TypedDict, total=False):
     # === Analyze 결과 ===
     analysis_summary: str
     affected_files: list[str]
-    score: dict
+    fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
+    fix_reason: str  # 1-sentence justification for fix_decision
     priority: Literal["P0", "P1", "P2"]
     story_points: Literal[1, 2, 3, 5, 8]
-    fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
     comment_draft: Optional[str]  # Comment for manual-required or comment-only
     assignee: Optional[str]  # Recommended assignee GitHub ID
 
