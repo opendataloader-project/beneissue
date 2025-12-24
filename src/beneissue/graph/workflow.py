@@ -15,6 +15,78 @@ from beneissue.nodes.intake import intake_node
 from beneissue.nodes.triage import triage_node
 
 
+def create_triage_workflow() -> StateGraph:
+    """Create triage-only workflow: intake → triage → apply_labels."""
+    workflow = StateGraph(IssueState)
+
+    workflow.add_node("intake", intake_node)
+    workflow.add_node("triage", triage_node)
+    workflow.add_node("apply_labels", apply_labels_node)
+
+    workflow.set_entry_point("intake")
+    workflow.add_edge("intake", "triage")
+    workflow.add_edge("triage", "apply_labels")
+    workflow.add_edge("apply_labels", END)
+
+    return workflow.compile()
+
+
+def create_analyze_workflow() -> StateGraph:
+    """Create analyze-only workflow: intake → analyze → post_comment → apply_labels."""
+    workflow = StateGraph(IssueState)
+
+    workflow.add_node("intake", intake_node)
+    workflow.add_node("analyze", analyze_node)
+    workflow.add_node("apply_labels", apply_labels_node)
+    workflow.add_node("post_comment", post_comment_node)
+
+    workflow.set_entry_point("intake")
+    workflow.add_edge("intake", "analyze")
+
+    # Route based on analyze result
+    workflow.add_conditional_edges(
+        "analyze",
+        route_after_analyze,
+        {
+            "fix": "apply_labels",  # No fix in this workflow, just apply labels
+            "apply_labels": "apply_labels",
+            "post_comment": "post_comment",
+        },
+    )
+
+    workflow.add_edge("post_comment", "apply_labels")
+    workflow.add_edge("apply_labels", END)
+
+    return workflow.compile()
+
+
+def create_fix_workflow() -> StateGraph:
+    """Create fix-only workflow: intake → fix → post_comment/apply_labels."""
+    workflow = StateGraph(IssueState)
+
+    workflow.add_node("intake", intake_node)
+    workflow.add_node("fix", fix_node)
+    workflow.add_node("apply_labels", apply_labels_node)
+    workflow.add_node("post_comment", post_comment_node)
+
+    workflow.set_entry_point("intake")
+    workflow.add_edge("intake", "fix")
+
+    workflow.add_conditional_edges(
+        "fix",
+        route_after_fix,
+        {
+            "apply_labels": "apply_labels",
+            "post_comment": "post_comment",
+        },
+    )
+
+    workflow.add_edge("post_comment", "apply_labels")
+    workflow.add_edge("apply_labels", END)
+
+    return workflow.compile()
+
+
 def create_full_workflow() -> StateGraph:
     """Create the full workflow with triage, analyze, fix, and actions."""
     workflow = StateGraph(IssueState)
@@ -69,5 +141,8 @@ def create_full_workflow() -> StateGraph:
     return workflow.compile()
 
 
-# Compiled workflow instance
+# Compiled workflow instances
+triage_graph = create_triage_workflow()
+analyze_graph = create_analyze_workflow()
+fix_graph = create_fix_workflow()
 full_graph = create_full_workflow()

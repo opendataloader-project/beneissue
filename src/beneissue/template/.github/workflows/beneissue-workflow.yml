@@ -24,7 +24,7 @@ jobs:
 
   on-command:
     # Run on @beneissue commands in comments
-    # Supported: @beneissue triage, @beneissue analyze, @beneissue fix
+    # Supported: @beneissue triage, @beneissue analyze, @beneissue fix, @beneissue run
     if: |
       github.event_name == 'issue_comment' &&
       contains(github.event.comment.body, '@beneissue')
@@ -36,12 +36,14 @@ jobs:
           COMMENT="${{ github.event.comment.body }}"
           if [[ "$COMMENT" == *"@beneissue triage"* ]]; then
             echo "command=triage" >> $GITHUB_OUTPUT
-          elif [[ "$COMMENT" == *"@beneissue fix"* ]]; then
-            echo "command=fix" >> $GITHUB_OUTPUT
           elif [[ "$COMMENT" == *"@beneissue analyze"* ]]; then
             echo "command=analyze" >> $GITHUB_OUTPUT
+          elif [[ "$COMMENT" == *"@beneissue fix"* ]]; then
+            echo "command=fix" >> $GITHUB_OUTPUT
+          elif [[ "$COMMENT" == *"@beneissue run"* ]]; then
+            echo "command=run" >> $GITHUB_OUTPUT
           else
-            echo "command=analyze" >> $GITHUB_OUTPUT
+            echo "command=run" >> $GITHUB_OUTPUT
           fi
 
       - uses: opendataloader-project/beneissue@v1

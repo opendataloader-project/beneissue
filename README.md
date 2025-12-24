@@ -122,14 +122,15 @@ For manual runs or debugging:
 
 | Command | Description |
 |---------|-------------|
+| `beneissue triage <repo> --issue <n>` | Classify issue only |
+| `beneissue analyze <repo> --issue <n>` | Analyze issue only (no triage, no fix) |
+| `beneissue fix <repo> --issue <n>` | Fix issue only (no triage, no analysis) |
+| `beneissue run <repo> --issue <n>` | Full workflow: triage → analyze → fix |
 | `beneissue init` | Initialize beneissue in current repo |
-| `beneissue triage <repo> --issue <n>` | Classify issue (no GitHub actions) |
-| `beneissue analyze <repo> --issue <n>` | Full analysis + apply labels |
-| `beneissue analyze <repo> --issue <n> --dry-run` | Analysis without GitHub changes |
-| `beneissue fix <repo> --issue <n>` | Attempt auto-fix |
 | `beneissue labels` | Sync labels to repository |
 | `beneissue test` | Run policy tests |
-| `beneissue test --dry-run` | Validate test cases only |
+
+Add `--dry-run` to triage/analyze to skip GitHub actions.
 
 ## License
 
