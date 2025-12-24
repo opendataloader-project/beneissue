@@ -117,12 +117,19 @@ def load_config(repo_path: Optional[Path] = None) -> BeneissueConfig:
     return config
 
 
-def setup_langsmith() -> None:
-    """Configure LangSmith tracing."""
-    # Set environment variables for LangChain tracing
+def setup_langsmith() -> bool:
+    """Configure LangSmith tracing if API key is available.
+
+    Returns:
+        True if LangSmith is enabled, False otherwise.
+    """
+    # Check if API key is set
+    if not os.environ.get("LANGCHAIN_API_KEY"):
+        # Disable tracing if no API key
+        os.environ["LANGCHAIN_TRACING_V2"] = "false"
+        return False
+
+    # Enable tracing
     os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
     os.environ.setdefault("LANGCHAIN_PROJECT", "beneissue")
-
-    # Verify API key is set
-    if not os.environ.get("LANGCHAIN_API_KEY"):
-        raise ValueError("LANGCHAIN_API_KEY environment variable is required")
+    return True

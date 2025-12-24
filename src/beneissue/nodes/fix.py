@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -10,12 +11,38 @@ from langsmith import traceable
 
 from beneissue.graph.state import IssueState
 
+# Regex pattern for GitHub PR URLs
+PR_URL_PATTERN = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+")
+
 # Load prompt template
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "fix.md"
 FIX_PROMPT_TEMPLATE = PROMPT_PATH.read_text()
 
 # Timeout for Claude Code execution (5 minutes)
 CLAUDE_CODE_TIMEOUT = 300
+
+
+def _extract_pr_url(output: str) -> str | None:
+    """Extract PR URL from Claude Code output.
+
+    Tries multiple strategies:
+    1. Parse as JSON and look for pr_url field
+    2. Search for GitHub PR URL pattern in text
+    """
+    # Try JSON parsing first
+    try:
+        data = json.loads(output)
+        if isinstance(data, dict) and data.get("pr_url"):
+            return data["pr_url"]
+    except json.JSONDecodeError:
+        pass
+
+    # Search for PR URL pattern in output
+    match = PR_URL_PATTERN.search(output)
+    if match:
+        return match.group(0)
+
+    return None
 
 
 def _clone_repo(repo: str, target_dir: str) -> bool:
@@ -100,18 +127,8 @@ def fix_node(state: IssueState) -> dict:
             )
 
             if result.returncode == 0:
-                try:
-                    output = json.loads(result.stdout.decode())
-                    pr_url = output.get("pr_url")
-                except json.JSONDecodeError:
-                    # Claude Code might output non-JSON on success
-                    stdout = result.stdout.decode()
-                    # Try to extract PR URL from output
-                    pr_url = None
-                    for line in stdout.split("\n"):
-                        if "github.com" in line and "/pull/" in line:
-                            pr_url = line.strip()
-                            break
+                stdout = result.stdout.decode()
+                pr_url = _extract_pr_url(stdout)
 
                 return {
                     "fix_success": True,

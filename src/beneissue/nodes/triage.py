@@ -5,6 +5,7 @@ from pathlib import Path
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from beneissue.config import load_config
 from beneissue.graph.state import IssueState
 from beneissue.nodes.schemas import TriageResult
 
@@ -15,15 +16,16 @@ TRIAGE_PROMPT = PROMPT_PATH.read_text()
 # Label mapping for triage decisions
 TRIAGE_LABELS = {
     "valid": ["triage/valid"],
-    "invalid": ["wontfix"],
-    "duplicate": ["duplicate"],
-    "needs_info": ["question"],
+    "invalid": ["triage/invalid"],
+    "duplicate": ["triage/duplicate"],
+    "needs_info": ["triage/needs-info"],
 }
 
 
 def triage_node(state: IssueState) -> dict:
-    """Classify an issue using Claude Haiku."""
-    llm = ChatAnthropic(model="claude-haiku-4-5")
+    """Classify an issue using Claude."""
+    config = load_config()
+    llm = ChatAnthropic(model=config.models.triage)
 
     response = llm.with_structured_output(TriageResult).invoke(
         [

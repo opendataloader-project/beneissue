@@ -6,6 +6,7 @@ from typing import Literal
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from beneissue.config import load_config
 from beneissue.graph.state import IssueState
 from beneissue.nodes.schemas import AnalyzeResult
 
@@ -13,13 +14,11 @@ from beneissue.nodes.schemas import AnalyzeResult
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "analyze.md"
 ANALYZE_PROMPT = PROMPT_PATH.read_text()
 
-# Auto-fix eligibility threshold
-AUTO_FIX_THRESHOLD = 80
-
 
 def analyze_node(state: IssueState) -> dict:
-    """Analyze an issue using Claude Sonnet."""
-    llm = ChatAnthropic(model="claude-sonnet-4-5")
+    """Analyze an issue using Claude."""
+    config = load_config()
+    llm = ChatAnthropic(model=config.models.analyze)
 
     response = llm.with_structured_output(AnalyzeResult).invoke(
         [
@@ -35,9 +34,10 @@ Repository: {state['repo']}
         ]
     )
 
-    # Determine fix decision based on score
+    # Determine fix decision based on score and config threshold
+    min_score = config.policy.auto_fix.min_score
     fix_decision: Literal["auto_eligible", "manual_required", "comment_only"]
-    if response.score.total >= AUTO_FIX_THRESHOLD:
+    if config.policy.auto_fix.enabled and response.score.total >= min_score:
         fix_decision = "auto_eligible"
     elif response.score.total >= 50:
         fix_decision = "manual_required"
