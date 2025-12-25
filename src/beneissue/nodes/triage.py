@@ -10,6 +10,7 @@ from beneissue.graph.state import IssueState
 from beneissue.integrations.github import format_existing_issues
 from beneissue.labels import get_triage_labels
 from beneissue.nodes.schemas import TriageResult
+from beneissue.observability import log_node_event, traced_node
 
 # Load prompt from file
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "triage.md"
@@ -38,6 +39,7 @@ def _build_triage_prompt(state: IssueState) -> str:
     )
 
 
+@traced_node("triage", run_type="chain", log_output=True)
 def triage_node(state: IssueState) -> dict:
     """Classify an issue using Claude."""
     config = load_config()
@@ -52,6 +54,14 @@ def triage_node(state: IssueState) -> dict:
                 content=f"Title: {state['issue_title']}\n\n{state['issue_body']}"
             ),
         ]
+    )
+
+    # Log decision details
+    log_node_event(
+        "triage",
+        f"decision={response.decision}",
+        "success" if response.decision == "valid" else "warning",
+        duplicate_of=response.duplicate_of if response.duplicate_of else None,
     )
 
     return {

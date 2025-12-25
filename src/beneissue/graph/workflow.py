@@ -132,7 +132,11 @@ def _build_fix_graph() -> StateGraph:
 def create_fix_workflow(
     checkpointer: Optional[BaseCheckpointSaver] = None,
 ) -> StateGraph:
-    """Create fix-only workflow with optional checkpointing."""
+    """Create fix-only workflow with optional checkpointing.
+
+    Args:
+        checkpointer: Optional checkpoint saver for state persistence.
+    """
     return _build_fix_graph().compile(checkpointer=checkpointer)
 
 
@@ -264,14 +268,21 @@ def create_checkpointed_workflow(
         )
     """
     checkpointer = MemorySaver()
-    creators = {
-        "triage": create_triage_workflow,
-        "analyze": create_analyze_workflow,
-        "fix": create_fix_workflow,
-        "full": create_full_workflow,
-    }
-    creator = creators.get(workflow_type, create_full_workflow)
-    # fix workflow doesn't support caching
-    if workflow_type == "fix":
-        return creator(checkpointer=checkpointer), checkpointer
-    return creator(checkpointer=checkpointer, enable_cache=enable_cache), checkpointer
+
+    if workflow_type == "triage":
+        return create_triage_workflow(
+            checkpointer=checkpointer,
+            enable_cache=enable_cache,
+        ), checkpointer
+    elif workflow_type == "analyze":
+        return create_analyze_workflow(
+            checkpointer=checkpointer,
+            enable_cache=enable_cache,
+        ), checkpointer
+    elif workflow_type == "fix":
+        return create_fix_workflow(checkpointer=checkpointer), checkpointer
+    else:  # full
+        return create_full_workflow(
+            checkpointer=checkpointer,
+            enable_cache=enable_cache,
+        ), checkpointer
