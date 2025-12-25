@@ -20,7 +20,7 @@ Drowning in GitHub issues? Install `beneissue` once, and it handles the rest aut
 
 ## How it works
 
-![BeneIssue Workflow](https://raw.githubusercontent.com/opendataloader/beneissue/main/docs/images/workflow.png)
+![BeneIssue Workflow](https://raw.githubusercontent.com/opendataloader-project/beneissue/main/docs/images/workflow.png)
 
 **Three stages:**
 
