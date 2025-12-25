@@ -1,0 +1,61 @@
+name: 'beneissue'
+description: 'AI-powered GitHub issue automation'
+author: 'opendataloader-project'
+
+branding:
+  icon: 'zap'
+  color: 'purple'
+
+inputs:
+  github-token:
+    description: 'GitHub token for API access'
+    required: true
+  anthropic-api-key:
+    description: 'Anthropic API key for Claude'
+    required: true
+  langchain-api-key:
+    description: 'LangChain API key for LangSmith tracing'
+    required: false
+  command:
+    description: 'Command to run (triage, analyze, fix)'
+    required: false
+    default: 'analyze'
+  issue-number:
+    description: 'Issue number to process (defaults to event issue)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Install beneissue
+      shell: bash
+      run: uv pip install --system beneissue
+
+    - name: Run beneissue
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        LANGCHAIN_API_KEY: ${{ inputs.langchain-api-key }}
+        LANGCHAIN_TRACING_V2: ${{ inputs.langchain-api-key && 'true' || 'false' }}
+        LANGCHAIN_PROJECT: 'beneissue'
+      run: |
+        ISSUE_NUMBER="${{ inputs.issue-number }}"
+        if [ -z "$ISSUE_NUMBER" ]; then
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+        fi
+
+        if [ -z "$ISSUE_NUMBER" ]; then
+          echo "Error: No issue number provided"
+          exit 1
+        fi
+
+        beneissue ${{ inputs.command }} ${{ github.repository }} --issue "$ISSUE_NUMBER"
