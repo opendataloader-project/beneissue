@@ -69,7 +69,7 @@ def _run_git(repo_path: str, *args: str) -> subprocess.CompletedProcess:
 
 
 def _create_pr(
-    repo_path: str, state: IssueState, fix_result: FixResult | None
+    repo_path: str, state: IssueState, fix_result: FixResult | None, branch_name: str
 ) -> str | None:
     """Create a PR using gh CLI and return the PR URL."""
     issue_number = state["issue_number"]
@@ -99,6 +99,8 @@ def _create_pr(
             pr_body,
             "--base",
             "main",
+            "--head",
+            branch_name,
         ],
         capture_output=True,
         cwd=repo_path,
@@ -145,7 +147,8 @@ def fix_node(state: IssueState) -> dict:
                     "-p",
                     prompt,
                     "--allowedTools",
-                    "Read,Glob,Grep,Edit,Write,Bash"
+                    "Read,Glob,Grep,Edit,Write,Bash",
+                    "--verbose",
                 ],
                 capture_output=True,
                 timeout=CLAUDE_CODE_TIMEOUT,
@@ -214,7 +217,7 @@ def fix_node(state: IssueState) -> dict:
                 }
 
             # Create PR
-            pr_url = _create_pr(repo_path, state, fix_result)
+            pr_url = _create_pr(repo_path, state, fix_result, branch_name)
 
             if pr_url and not pr_url.startswith("ERROR:"):
                 return {
