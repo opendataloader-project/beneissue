@@ -35,15 +35,6 @@ src/
 └── main.py       # CLI entry point
 ```
 
-## Known Issues
-
-| # | Title | Status |
-|---|-------|--------|
-| 1 | Division by zero causes crash in divide() | Open |
-| 2 | Negative number subtraction returns wrong result | Fixed |
-| 3 | Large number multiplication causes overflow | Open |
-| 4 | Missing input validation in main.py | Closed |
-
 ## Contributing
 
 Please open an issue before submitting a pull request.
