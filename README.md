@@ -38,8 +38,6 @@ Go to your repo → Settings → Secrets and variables → Actions, and add:
 ```bash
 cd your-repo
 beneissue init
-git add .github/ .claude/
-git commit -m "Add beneissue automation"
 git push
 ```
 

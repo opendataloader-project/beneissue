@@ -321,10 +321,11 @@ def init(
         raise typer.Exit(1)
 
     # Copy only config directories (.claude/ and .github/) to current directory
+    created_files: list[Path] = []
     for config_dir in [".claude", ".github"]:
         src_dir = template_dir / config_dir
         if src_dir.exists():
-            _copy_template_tree(src_dir, Path(".") / config_dir)
+            created_files.extend(_copy_template_tree(src_dir, Path(".") / config_dir))
 
     # Create labels
     if not skip_labels:
@@ -351,6 +352,37 @@ def init(
             else:
                 typer.echo(f"  Failed:  {label_name} - {result.stderr.strip()}")
 
+    # Git add and commit created files
+    if created_files:
+        typer.echo("\nCommitting files to git...")
+        file_paths = [str(f) for f in created_files]
+        result = subprocess.run(
+            ["git", "add"] + file_paths,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            result = subprocess.run(
+                [
+                    "git",
+                    "commit",
+                    "-m",
+                    "Add beneissue automation",
+                    "--author",
+                    "beneissue[bot] <beneissue[bot]@users.noreply.github.com>",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                typer.echo("Committed: Add beneissue automation")
+            elif "nothing to commit" in result.stdout + result.stderr:
+                typer.echo("No changes to commit.")
+            else:
+                typer.echo(f"Commit failed: {result.stderr.strip()}")
+        else:
+            typer.echo(f"Git add failed: {result.stderr.strip()}")
+
     typer.echo("\n" + "=" * 50)
     typer.echo("Setup complete!")
     typer.echo("=" * 50)
@@ -358,15 +390,16 @@ def init(
     typer.echo("1. Add secrets to your repository:")
     typer.echo("   - ANTHROPIC_API_KEY (required)")
     typer.echo("   - LANGCHAIN_API_KEY (optional, for LangSmith tracing)")
-    typer.echo("\n2. Commit and push the files:")
-    typer.echo("   git add .github/workflows/beneissue-workflow.yml .claude/")
-    typer.echo("   git commit -m 'Add beneissue automation'")
+    typer.echo("\n2. Push and create an issue to test:")
     typer.echo("   git push")
-    typer.echo("\n3. Create an issue to test!")
 
 
-def _copy_template_tree(src_dir: Path, dest_dir: Path) -> None:
-    """Recursively copy template directory to destination, with overwrite confirmation."""
+def _copy_template_tree(src_dir: Path, dest_dir: Path) -> list[Path]:
+    """Recursively copy template directory to destination, with overwrite confirmation.
+
+    Returns list of created/updated file paths.
+    """
+    created_files = []
     for src_path in src_dir.rglob("*"):
         if src_path.is_dir():
             continue
@@ -390,6 +423,9 @@ def _copy_template_tree(src_dir: Path, dest_dir: Path) -> None:
         # Copy file
         dest_path.write_bytes(src_path.read_bytes())
         typer.echo(f"Created: {dest_path}")
+        created_files.append(dest_path)
+
+    return created_files
 
 
 @app.command("labels")
