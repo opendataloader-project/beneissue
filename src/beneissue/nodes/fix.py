@@ -134,10 +134,12 @@ def fix_node(state: IssueState) -> dict:
             }
 
         try:
-            # Run Claude Code (code changes only, no PR)
+            # Run Claude Code using npx (no global installation required)
             result = subprocess.run(
                 [
-                    "claude",
+                    "npx",
+                    "-y",
+                    "@anthropic-ai/claude-code",
                     "-p",
                     prompt,
                     "--allowedTools",
@@ -237,7 +239,7 @@ def fix_node(state: IssueState) -> dict:
         except FileNotFoundError:
             return {
                 "fix_success": False,
-                "fix_error": "Claude Code CLI not found. Install with: npm install -g @anthropic-ai/claude-code",
+                "fix_error": "npx not found. Ensure Node.js is installed.",
                 "labels_to_add": ["fix/manual-required"],
             }
         except Exception as e:

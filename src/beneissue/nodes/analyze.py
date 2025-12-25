@@ -78,8 +78,11 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
 def _run_analysis(repo_path: str, prompt: str, *, verbose: bool = False) -> dict:
     """Run Claude Code analysis on a repository path."""
     try:
+        # Use npx to run Claude Code without requiring global installation
         cmd = [
-            "claude",
+            "npx",
+            "-y",
+            "@anthropic-ai/claude-code",
             "-p",
             prompt,
             "--allowedTools",
@@ -114,7 +117,7 @@ def _run_analysis(repo_path: str, prompt: str, *, verbose: bool = False) -> dict
         )
     except FileNotFoundError:
         return _fallback_analyze(
-            "Claude Code CLI not installed. Run: npm install -g @anthropic-ai/claude-code"
+            "npx not found. Ensure Node.js is installed."
         )
     except Exception as e:
         return _fallback_analyze(str(e)[:200])
