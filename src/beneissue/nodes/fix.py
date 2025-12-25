@@ -73,6 +73,7 @@ def _create_pr(
 ) -> str | None:
     """Create a PR using gh CLI and return the PR URL."""
     issue_number = state["issue_number"]
+    repo = state["repo"]
 
     # Use fix result or fall back to defaults
     pr_title = (
@@ -88,11 +89,14 @@ def _create_pr(
     pr_body = f"{pr_description}\n\n---\nCloses #{issue_number}"
 
     # Create PR using gh CLI
+    # Note: --repo is required when running from a cloned temp directory
     result = subprocess.run(
         [
             "gh",
             "pr",
             "create",
+            "--repo",
+            repo,
             "--title",
             pr_title,
             "--body",
