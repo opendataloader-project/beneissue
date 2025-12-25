@@ -27,7 +27,7 @@ Drowning in GitHub issues? Install `beneissue` once, and it handles the rest aut
 | Stage | What it does | Model |
 |-------|--------------|-------|
 | **Triage** | Classify issue → valid / invalid / duplicate / needs-info | Haiku (fast, ~$0.02) |
-| **Analyze** | Find affected files, plan fix approach, check eligibility | Sonnet |
+| **Analyze** | Find affected files, plan fix approach, check eligibility | Claude Code |
 | **Fix** | Create branch, apply fix, open PR | Claude Code |
 
 ## Install once, runs forever
