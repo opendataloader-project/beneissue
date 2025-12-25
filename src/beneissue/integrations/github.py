@@ -188,3 +188,51 @@ def close_issue(repo: str, issue_number: int, reason: str = "not_planned") -> No
     repository = gh.get_repo(repo)
     issue = repository.get_issue(issue_number)
     issue.edit(state="closed", state_reason=reason)
+
+
+class PullRequestResult:
+    """Result of creating a pull request."""
+
+    def __init__(
+        self,
+        success: bool,
+        url: str | None = None,
+        error: str | None = None,
+    ):
+        self.success = success
+        self.url = url
+        self.error = error
+
+
+def create_pull_request(
+    repo: str,
+    branch_name: str,
+    title: str,
+    body: str,
+    base: str = "main",
+) -> PullRequestResult:
+    """Create a pull request using PyGithub.
+
+    Args:
+        repo: Repository in owner/repo format
+        branch_name: Head branch name
+        title: PR title
+        body: PR body/description
+        base: Base branch (default: main)
+
+    Returns:
+        PullRequestResult with success status and URL or error
+    """
+    try:
+        gh = get_github_client()
+        repository = gh.get_repo(repo)
+        pr = repository.create_pull(
+            title=title,
+            body=body,
+            head=branch_name,
+            base=base,
+        )
+        return PullRequestResult(success=True, url=pr.html_url)
+    except Exception as e:
+        error_msg = str(e)[:200] if str(e) else "Unknown error"
+        return PullRequestResult(success=False, error=error_msg)
