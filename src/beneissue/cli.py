@@ -182,6 +182,113 @@ def run(
 
 
 @app.command()
+def check(
+    repo: str = typer.Argument(..., help="Repository in owner/repo format"),
+) -> None:
+    """Check beneissue setup and permissions (dry-run test).
+
+    Verifies:
+    - GitHub token has required permissions (issues, contents, pull-requests)
+    - Anthropic API key is set
+    - gh CLI is available and authenticated
+    - Repository is accessible
+    """
+    import os
+    import sys
+
+    typer.echo(f"Checking beneissue setup for {repo}...\n")
+
+    all_passed = True
+
+    def check_item(name: str, passed: bool, detail: str = "") -> None:
+        nonlocal all_passed
+        status = "✅" if passed else "❌"
+        msg = f"{status} {name}"
+        if detail:
+            msg += f": {detail}"
+        typer.echo(msg)
+        if not passed:
+            all_passed = False
+
+    # Check environment variables
+    typer.echo("--- Environment ---")
+    check_item(
+        "ANTHROPIC_API_KEY",
+        bool(os.environ.get("ANTHROPIC_API_KEY")),
+        "set" if os.environ.get("ANTHROPIC_API_KEY") else "not set"
+    )
+    check_item(
+        "GITHUB_TOKEN",
+        bool(os.environ.get("GITHUB_TOKEN")),
+        "set" if os.environ.get("GITHUB_TOKEN") else "not set"
+    )
+
+    # Check gh CLI
+    typer.echo("\n--- GitHub CLI ---")
+    gh_available = shutil.which("gh") is not None
+    check_item("gh CLI installed", gh_available)
+
+    if gh_available:
+        # Check gh auth status
+        result = subprocess.run(
+            ["gh", "auth", "status"],
+            capture_output=True,
+            text=True,
+        )
+        check_item("gh CLI authenticated", result.returncode == 0)
+
+        # Check repository access
+        typer.echo(f"\n--- Repository: {repo} ---")
+        result = subprocess.run(
+            ["gh", "repo", "view", repo, "--json", "name"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_TOKEN", "")},
+        )
+        check_item("Repository accessible", result.returncode == 0)
+
+        # Check permissions by trying to list issues
+        result = subprocess.run(
+            ["gh", "issue", "list", "-R", repo, "--limit", "1"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_TOKEN", "")},
+        )
+        check_item("Issues permission", result.returncode == 0)
+
+        # Check PR creation permission (dry check - list PRs)
+        result = subprocess.run(
+            ["gh", "pr", "list", "-R", repo, "--limit", "1"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_TOKEN", "")},
+        )
+        check_item("Pull requests permission", result.returncode == 0)
+
+        # Check contents permission (can we see branches?)
+        result = subprocess.run(
+            ["gh", "api", f"repos/{repo}/branches", "--jq", ".[0].name"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_TOKEN", "")},
+        )
+        check_item("Contents permission", result.returncode == 0)
+
+    # Check Node.js / npx
+    typer.echo("\n--- Node.js ---")
+    npx_available = shutil.which("npx") is not None
+    check_item("npx available", npx_available)
+
+    # Summary
+    typer.echo("\n" + "=" * 40)
+    if all_passed:
+        typer.echo("✅ All checks passed! beneissue is ready.")
+    else:
+        typer.echo("❌ Some checks failed. Please fix the issues above.")
+        sys.exit(1)
+
+
+@app.command()
 def init(
     skip_labels: bool = typer.Option(
         False, "--skip-labels", help="Skip creating GitHub labels"

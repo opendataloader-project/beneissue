@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -12,6 +13,12 @@ from langsmith import traceable
 from beneissue.graph.state import IssueState
 from beneissue.integrations.github import clone_repo
 from beneissue.nodes.schemas import AnalyzeResult
+
+
+def _log(message: str, level: str = "info") -> None:
+    """Log message to stderr for GitHub Actions visibility."""
+    prefix = {"info": "ℹ️", "success": "✅", "error": "❌", "warning": "⚠️"}.get(level, "")
+    print(f"{prefix} [analyze] {message}", file=sys.stderr, flush=True)
 
 # Load prompt from file
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "analyze.md"
@@ -82,6 +89,7 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
 
 def _run_analysis(repo_path: str, prompt: str, *, verbose: bool = False, repo_owner: str | None = None) -> dict:
     """Run Claude Code analysis on a repository path."""
+    _log("Running Claude Code to analyze issue...")
     try:
         # Use npx to run Claude Code without requiring global installation
         cmd = [
@@ -109,22 +117,33 @@ def _run_analysis(repo_path: str, prompt: str, *, verbose: bool = False, repo_ow
 
         stdout = result.stdout.decode() if result.stdout else ""
 
+        # Log Claude Code output
+        if stdout:
+            _log("=== Claude Code Output ===")
+            print(stdout, file=sys.stderr, flush=True)
+            _log("=== End Claude Code Output ===")
+
         response = _parse_analyze_response(stdout)
 
         if response:
+            _log(f"Analysis complete: fix_decision={response.fix_decision}, priority={response.priority}", "success")
             return _build_result(response, repo_owner=repo_owner)
         else:
+            _log(f"Failed to parse analysis output: {stdout[:200]}", "error")
             return _fallback_analyze(f"Failed to parse analysis output: {stdout[:200]}", repo_owner=repo_owner)
 
     except subprocess.TimeoutExpired:
+        _log(f"Analysis timeout after {CLAUDE_CODE_TIMEOUT} seconds", "error")
         return _fallback_analyze(
             f"Analysis timeout after {CLAUDE_CODE_TIMEOUT} seconds", repo_owner=repo_owner
         )
     except FileNotFoundError:
+        _log("npx not found. Ensure Node.js is installed.", "error")
         return _fallback_analyze(
             "npx not found. Ensure Node.js is installed.", repo_owner=repo_owner
         )
     except Exception as e:
+        _log(f"Unexpected error: {e}", "error")
         return _fallback_analyze(str(e)[:200], repo_owner=repo_owner)
 
 
@@ -134,12 +153,15 @@ def analyze_node(state: IssueState) -> dict:
     prompt = _build_analyze_prompt(state)
     verbose = state.get("verbose", False)
 
+    _log(f"Starting analysis for issue: {state.get('issue_title', 'Unknown')}")
+
     # Extract repo owner for fallback assignee
     repo = state.get("repo", "")
     repo_owner = repo.split("/")[0] if "/" in repo else None
 
     # Use project_root if provided (for testing), otherwise clone
     if state.get("project_root"):
+        _log(f"Using local project root: {state['project_root']}")
         return _run_analysis(str(state["project_root"]), prompt, verbose=verbose, repo_owner=repo_owner)
 
     # Create temporary directory for the repo
@@ -147,7 +169,9 @@ def analyze_node(state: IssueState) -> dict:
         repo_path = os.path.join(temp_dir, "repo")
 
         # Clone the repository
+        _log(f"Cloning repository {repo}...")
         if not clone_repo(state["repo"], repo_path):
+            _log("Failed to clone repository", "error")
             return _fallback_analyze("Failed to clone repository", repo_owner=repo_owner)
 
         return _run_analysis(repo_path, prompt, verbose=verbose, repo_owner=repo_owner)

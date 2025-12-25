@@ -21,13 +21,13 @@ Use the beneissue skill to fix this issue:
 {{
   "success": true,
   "title": "Add null check in UserService",
-  "description": "Added guard clause to prevent NPE when user is null",
+  "description": "## Summary\nBrief description of what was fixed.\n\n## Changes\n- `path/to/file.py`: Added guard clause to prevent NPE\n- `tests/test_file.py`: Added test case for null input\n\n## Testing\nDescribe how the fix was verified.",
   "error": null
 }}
 ```
 
 - `title`: Brief summary (50 chars max, imperative mood)
-- `description`: What was changed and why
+- `description`: Detailed markdown with Summary, Changes (file-by-file), and Testing sections
 - `error`: Error message if success is false
 
 Keep changes minimal and focused. Don't refactor unrelated code.

@@ -12,12 +12,12 @@ inputs:
     required: true
   anthropic-api-key:
     description: 'Anthropic API key for Claude'
-    required: true
+    required: false
   langchain-api-key:
     description: 'LangChain API key for LangSmith tracing'
     required: false
   command:
-    description: 'Command to run (triage, analyze, fix)'
+    description: 'Command to run (triage, analyze, fix, check)'
     required: false
     default: 'analyze'
   issue-number:
@@ -52,6 +52,14 @@ runs:
         LANGCHAIN_TRACING_V2: ${{ inputs.langchain-api-key && 'true' || 'false' }}
         LANGCHAIN_PROJECT: 'beneissue'
       run: |
+        COMMAND="${{ inputs.command }}"
+
+        # check command doesn't need issue number
+        if [ "$COMMAND" = "check" ]; then
+          beneissue check ${{ github.repository }}
+          exit 0
+        fi
+
         ISSUE_NUMBER="${{ inputs.issue-number }}"
         if [ -z "$ISSUE_NUMBER" ]; then
           ISSUE_NUMBER="${{ github.event.issue.number }}"
@@ -67,4 +75,4 @@ runs:
           VERBOSE_FLAG="--verbose"
         fi
 
-        beneissue ${{ inputs.command }} ${{ github.repository }} --issue "$ISSUE_NUMBER" $VERBOSE_FLAG
+        beneissue $COMMAND ${{ github.repository }} --issue "$ISSUE_NUMBER" $VERBOSE_FLAG

@@ -5,6 +5,7 @@ import os
 import re
 import secrets
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -13,6 +14,12 @@ from langsmith import traceable
 from beneissue.graph.state import IssueState
 from beneissue.integrations.github import clone_repo
 from beneissue.nodes.schemas import FixResult
+
+
+def _log(message: str, level: str = "info") -> None:
+    """Log message to stderr for GitHub Actions visibility."""
+    prefix = {"info": "ℹ️", "success": "✅", "error": "❌", "warning": "⚠️"}.get(level, "")
+    print(f"{prefix} [fix] {message}", file=sys.stderr, flush=True)
 
 # Load prompt from file
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "fix.md"
@@ -131,12 +138,16 @@ def fix_node(state: IssueState) -> dict:
     prompt = _build_fix_prompt(state)
     issue_number = state["issue_number"]
 
+    _log(f"Starting fix for issue #{issue_number}")
+
     # Create temporary directory for the repo
     with tempfile.TemporaryDirectory() as temp_dir:
         repo_path = os.path.join(temp_dir, "repo")
 
         # Clone the repository
+        _log(f"Cloning repository {state['repo']}...")
         if not clone_repo(state["repo"], repo_path):
+            _log("Failed to clone repository", "error")
             return {
                 "fix_success": False,
                 "fix_error": "Failed to clone repository",
@@ -144,6 +155,7 @@ def fix_node(state: IssueState) -> dict:
             }
 
         try:
+            _log("Running Claude Code to analyze and fix...")
             # Run Claude Code using npx (no global installation required)
             result = subprocess.run(
                 [
@@ -165,8 +177,19 @@ def fix_node(state: IssueState) -> dict:
                 },
             )
 
+            # Log Claude Code output
+            stdout = result.stdout.decode() if result.stdout else ""
+            stderr = result.stderr.decode() if result.stderr else ""
+
+            if stdout:
+                _log("=== Claude Code Output ===")
+                print(stdout, file=sys.stderr, flush=True)
+                _log("=== End Claude Code Output ===")
+
             if result.returncode != 0:
-                stderr = result.stderr.decode() if result.stderr else "Unknown error"
+                _log(f"Claude Code failed with return code {result.returncode}", "error")
+                if stderr:
+                    _log(f"stderr: {stderr[:500]}", "error")
                 return {
                     "fix_success": False,
                     "fix_error": stderr[:500],
@@ -174,11 +197,16 @@ def fix_node(state: IssueState) -> dict:
                 }
 
             # Parse fix output
-            output = result.stdout.decode() if result.stdout else ""
-            fix_result = _parse_fix_output(output)
+            fix_result = _parse_fix_output(stdout)
+
+            if fix_result:
+                _log(f"Fix result: success={fix_result.success}, title={fix_result.title}")
+            else:
+                _log("Could not parse structured fix result from output", "warning")
 
             # Check if fix reported failure
             if fix_result and not fix_result.success:
+                _log(f"Fix reported failure: {fix_result.error}", "error")
                 return {
                     "fix_success": False,
                     "fix_error": fix_result.error or "Fix reported failure",
@@ -187,17 +215,22 @@ def fix_node(state: IssueState) -> dict:
 
             # Check if there are changes
             status_result = _run_git(repo_path, "status", "--porcelain")
-            if not status_result.stdout.decode().strip():
+            changes = status_result.stdout.decode().strip()
+            if not changes:
+                _log("No changes were made by Claude Code", "warning")
                 return {
                     "fix_success": False,
                     "fix_error": "No changes were made",
                     "labels_to_add": ["fix/manual-required"],
                 }
 
+            _log(f"Changes detected:\n{changes}")
+
             # Create branch with random suffix to avoid conflicts
             random_suffix = secrets.token_hex(3)
             branch_name = f"fix/issue-{issue_number}-{random_suffix}"
             _run_git(repo_path, "checkout", "-b", branch_name)
+            _log(f"Created branch: {branch_name}")
 
             # Build commit message from fix result or fallback
             commit_title = (
@@ -217,20 +250,26 @@ def fix_node(state: IssueState) -> dict:
             # Commit changes
             _run_git(repo_path, "add", "-A")
             _run_git(repo_path, "commit", "-m", commit_msg)
+            _log(f"Committed with message: {commit_title}")
 
             # Push branch
+            _log(f"Pushing branch {branch_name}...")
             push_result = _run_git(repo_path, "push", "-u", "origin", branch_name)
             if push_result.returncode != 0:
+                push_error = push_result.stderr.decode()[:200]
+                _log(f"Failed to push: {push_error}", "error")
                 return {
                     "fix_success": False,
-                    "fix_error": f"Failed to push: {push_result.stderr.decode()[:200]}",
+                    "fix_error": f"Failed to push: {push_error}",
                     "labels_to_add": ["fix/manual-required"],
                 }
 
             # Create PR
+            _log("Creating pull request...")
             pr_url = _create_pr(repo_path, state, fix_result, branch_name)
 
             if pr_url and not pr_url.startswith("ERROR:"):
+                _log(f"PR created: {pr_url}", "success")
                 return {
                     "fix_success": True,
                     "pr_url": pr_url,
@@ -239,6 +278,7 @@ def fix_node(state: IssueState) -> dict:
                 }
             else:
                 error_msg = pr_url[6:] if pr_url and pr_url.startswith("ERROR:") else "Failed to create PR"
+                _log(f"Failed to create PR: {error_msg}", "error")
                 return {
                     "fix_success": False,
                     "fix_error": error_msg,
@@ -246,18 +286,21 @@ def fix_node(state: IssueState) -> dict:
                 }
 
         except subprocess.TimeoutExpired:
+            _log(f"Timeout after {CLAUDE_CODE_TIMEOUT} seconds", "error")
             return {
                 "fix_success": False,
                 "fix_error": f"Timeout after {CLAUDE_CODE_TIMEOUT} seconds",
                 "labels_to_add": ["fix/manual-required"],
             }
         except FileNotFoundError:
+            _log("npx not found. Ensure Node.js is installed.", "error")
             return {
                 "fix_success": False,
                 "fix_error": "npx not found. Ensure Node.js is installed.",
                 "labels_to_add": ["fix/manual-required"],
             }
         except Exception as e:
+            _log(f"Unexpected error: {e}", "error")
             return {
                 "fix_success": False,
                 "fix_error": str(e)[:500],
