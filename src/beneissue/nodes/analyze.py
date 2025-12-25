@@ -23,9 +23,14 @@ CLAUDE_CODE_TIMEOUT = 180
 
 def _build_analyze_prompt(state: IssueState) -> str:
     """Build the analyze prompt for Claude Code."""
+    # Extract repo owner from "owner/repo" format
+    repo = state.get("repo", "")
+    repo_owner = repo.split("/")[0] if "/" in repo else "unknown"
+
     return ANALYZE_PROMPT.format(
         issue_title=state["issue_title"],
         issue_body=state["issue_body"],
+        repo_owner=repo_owner,
     )
 
 
@@ -75,7 +80,7 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
     return None
 
 
-def _run_analysis(repo_path: str, prompt: str, *, verbose: bool = False) -> dict:
+def _run_analysis(repo_path: str, prompt: str, *, verbose: bool = False, repo_owner: str | None = None) -> dict:
     """Run Claude Code analysis on a repository path."""
     try:
         # Use npx to run Claude Code without requiring global installation
@@ -107,20 +112,20 @@ def _run_analysis(repo_path: str, prompt: str, *, verbose: bool = False) -> dict
         response = _parse_analyze_response(stdout)
 
         if response:
-            return _build_result(response)
+            return _build_result(response, repo_owner=repo_owner)
         else:
-            return _fallback_analyze(f"Failed to parse analysis output: {stdout[:200]}")
+            return _fallback_analyze(f"Failed to parse analysis output: {stdout[:200]}", repo_owner=repo_owner)
 
     except subprocess.TimeoutExpired:
         return _fallback_analyze(
-            f"Analysis timeout after {CLAUDE_CODE_TIMEOUT} seconds"
+            f"Analysis timeout after {CLAUDE_CODE_TIMEOUT} seconds", repo_owner=repo_owner
         )
     except FileNotFoundError:
         return _fallback_analyze(
-            "npx not found. Ensure Node.js is installed."
+            "npx not found. Ensure Node.js is installed.", repo_owner=repo_owner
         )
     except Exception as e:
-        return _fallback_analyze(str(e)[:200])
+        return _fallback_analyze(str(e)[:200], repo_owner=repo_owner)
 
 
 @traceable(name="claude_code_analyze", run_type="chain")
@@ -129,9 +134,13 @@ def analyze_node(state: IssueState) -> dict:
     prompt = _build_analyze_prompt(state)
     verbose = state.get("verbose", False)
 
+    # Extract repo owner for fallback assignee
+    repo = state.get("repo", "")
+    repo_owner = repo.split("/")[0] if "/" in repo else None
+
     # Use project_root if provided (for testing), otherwise clone
     if state.get("project_root"):
-        return _run_analysis(str(state["project_root"]), prompt, verbose=verbose)
+        return _run_analysis(str(state["project_root"]), prompt, verbose=verbose, repo_owner=repo_owner)
 
     # Create temporary directory for the repo
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -139,13 +148,16 @@ def analyze_node(state: IssueState) -> dict:
 
         # Clone the repository
         if not clone_repo(state["repo"], repo_path):
-            return _fallback_analyze("Failed to clone repository")
+            return _fallback_analyze("Failed to clone repository", repo_owner=repo_owner)
 
-        return _run_analysis(repo_path, prompt, verbose=verbose)
+        return _run_analysis(repo_path, prompt, verbose=verbose, repo_owner=repo_owner)
 
 
-def _build_result(response: AnalyzeResult) -> dict:
+def _build_result(response: AnalyzeResult, repo_owner: str | None = None) -> dict:
     """Build the result dict from AnalyzeResult."""
+    # Use response assignee if provided, otherwise fall back to repo owner
+    assignee = response.assignee if response.assignee else repo_owner
+
     return {
         "analysis_summary": response.summary,
         "affected_files": response.affected_files,
@@ -154,12 +166,12 @@ def _build_result(response: AnalyzeResult) -> dict:
         "priority": response.priority,
         "story_points": response.story_points,
         "comment_draft": response.comment_draft,
-        "assignee": response.assignee,
+        "assignee": assignee,
         "labels_to_add": [f"fix/{response.fix_decision.replace('_', '-')}"],
     }
 
 
-def _fallback_analyze(error: str) -> dict:
+def _fallback_analyze(error: str, repo_owner: str | None = None) -> dict:
     """Return a fallback analysis when Claude Code fails."""
     return {
         "analysis_summary": f"Analysis incomplete: {error}",
@@ -167,6 +179,6 @@ def _fallback_analyze(error: str) -> dict:
         "fix_decision": "manual_required",
         "fix_reason": f"Analysis failed: {error}",
         "comment_draft": f"Automated analysis encountered an issue: {error}\n\nPlease investigate manually.",
-        "assignee": None,
+        "assignee": repo_owner,
         "labels_to_add": ["fix/manual-required"],
     }

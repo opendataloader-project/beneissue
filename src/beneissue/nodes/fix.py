@@ -143,9 +143,7 @@ def fix_node(state: IssueState) -> dict:
                     "-p",
                     prompt,
                     "--allowedTools",
-                    "Read,Glob,Grep,Edit,Write,Bash",
-                    "--output-format",
-                    "text",
+                    "Read,Glob,Grep,Edit,Write,Bash"
                 ],
                 capture_output=True,
                 timeout=CLAUDE_CODE_TIMEOUT,

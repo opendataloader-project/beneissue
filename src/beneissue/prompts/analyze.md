@@ -19,8 +19,11 @@ Analyze GitHub issue and determine fix approach.
 
 All true → **auto_eligible**, otherwise → **manual_required**
 
-## Assignee (from .claude/skills/beneissue/beneissue-config.yml)
-Read config. Always assign: best specialty match, or first available.
+## Assignee
+1. Read `.claude/skills/beneissue/beneissue-config.yml` for team members
+2. If team members exist with `available: true` and non-empty `github_id`: assign best specialty match
+3. If no valid team members configured: assign to repo owner "{repo_owner}"
+4. Always provide an assignee - never leave it null
 
 ## Output (JSON only)
 

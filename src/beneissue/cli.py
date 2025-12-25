@@ -68,6 +68,9 @@ def analyze(
     dry_run: bool = typer.Option(
         False, "--dry-run", "-n", help="Don't apply labels or post comments"
     ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
 ) -> None:
     """Analyze a GitHub issue (no triage, no fix)."""
     setup_langsmith()
@@ -78,7 +81,7 @@ def analyze(
         from beneissue.nodes.analyze import analyze_node
         from beneissue.nodes.intake import intake_node
 
-        state = {"repo": repo, "issue_number": issue}
+        state = {"repo": repo, "issue_number": issue, "verbose": verbose}
         state.update(intake_node(state))
         state.update(analyze_node(state))
 
@@ -86,6 +89,7 @@ def analyze(
         typer.echo(f"Affected files: {state.get('affected_files', [])}")
         typer.echo(f"Fix decision: {state['fix_decision']}")
         typer.echo(f"Reason: {state.get('fix_reason', '')}")
+        typer.echo(f"Assignee: {state.get('assignee', 'None')}")
         typer.echo(f"\nLabels to add: {state.get('labels_to_add', [])}")
         typer.echo("\n[DRY RUN] No actions taken on GitHub.")
     else:
@@ -93,12 +97,14 @@ def analyze(
             {
                 "repo": repo,
                 "issue_number": issue,
+                "verbose": verbose,
             }
         )
 
         typer.echo(f"\nSummary: {result['analysis_summary']}")
         typer.echo(f"Affected files: {result.get('affected_files', [])}")
         typer.echo(f"Fix decision: {result['fix_decision']}")
+        typer.echo(f"Assignee: {result.get('assignee', 'None')}")
         typer.echo(f"\nLabels applied: {result.get('labels_to_add', [])}")
 
 

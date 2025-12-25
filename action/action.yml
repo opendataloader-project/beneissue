@@ -23,6 +23,10 @@ inputs:
   issue-number:
     description: 'Issue number to process (defaults to event issue)'
     required: false
+  verbose:
+    description: 'Enable verbose output for debugging'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -58,4 +62,9 @@ runs:
           exit 1
         fi
 
-        beneissue ${{ inputs.command }} ${{ github.repository }} --issue "$ISSUE_NUMBER"
+        VERBOSE_FLAG=""
+        if [ "${{ inputs.verbose }}" = "true" ]; then
+          VERBOSE_FLAG="--verbose"
+        fi
+
+        beneissue ${{ inputs.command }} ${{ github.repository }} --issue "$ISSUE_NUMBER" $VERBOSE_FLAG
