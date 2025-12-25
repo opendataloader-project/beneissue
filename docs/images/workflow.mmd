@@ -1,0 +1,36 @@
+flowchart LR
+    subgraph trigger [" "]
+        A[Issue Opened]
+        B["@beneissue comment"]
+    end
+
+    subgraph pipeline ["BeneIssue Pipeline"]
+        direction TB
+        T[🏷️ Triage]
+        AN[🔍 Analyze]
+        FIX[🔧 Fix]
+        PR[✅ Create PR]
+        CL[❌ Close]
+        ASK[❓ Ask Follow-up]
+        ASSIGN[👤 Assign to Team]
+
+        T --> |valid| AN
+        T --> |invalid/duplicate| CL
+        T --> |needs-info| ASK
+        AN --> |auto-eligible| FIX
+        AN --> |manual-required| ASSIGN
+        FIX --> PR
+    end
+
+    A --> |GitHub Action| T
+    B --> |GitHub Action| T
+
+    style T fill:#a78bfa,stroke:#7c3aed,color:#1e1b4b
+    style AN fill:#60a5fa,stroke:#2563eb,color:#1e3a5f
+    style FIX fill:#4ade80,stroke:#16a34a,color:#14532d
+    style PR fill:#34d399,stroke:#059669,color:#064e3b
+    style CL fill:#f87171,stroke:#dc2626,color:#450a0a
+    style ASK fill:#fbbf24,stroke:#d97706,color:#451a03
+    style ASSIGN fill:#fb923c,stroke:#ea580c,color:#431407
+    style A fill:#e0e7ff,stroke:#6366f1,color:#312e81
+    style B fill:#e0e7ff,stroke:#6366f1,color:#312e81

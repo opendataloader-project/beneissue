@@ -18,6 +18,18 @@ Drowning in GitHub issues? Install `beneissue` once, and it handles the rest aut
 | Manually comment "need more info" | Auto-asks specific follow-up questions |
 | Fix simple bugs yourself | Auto-eligible issues get auto-PR via Claude Code |
 
+## How it works
+
+![BeneIssue Workflow](https://raw.githubusercontent.com/opendataloader/beneissue/main/docs/images/workflow.png)
+
+**Three stages:**
+
+| Stage | What it does | Model |
+|-------|--------------|-------|
+| **Triage** | Classify issue → valid / invalid / duplicate / needs-info | Haiku (fast, ~$0.02) |
+| **Analyze** | Find affected files, plan fix approach, check eligibility | Sonnet |
+| **Fix** | Create branch, apply fix, open PR | Claude Code |
+
 ## Install once, runs forever
 
 ### 1. Install the package
@@ -46,6 +58,17 @@ beneissue init
 git push
 ```
 
+This creates:
+
+```
+your-repo/
+├── .github/workflows/
+│   └── beneissue-workflow.yml   # Triggers on issue events
+└── .claude/skills/beneissue/
+    ├── SKILL.md                 # Claude Code instructions
+    └── beneissue-config.yml     # Your settings
+```
+
 That's it. From now on:
 
 1. **New issue opened** → automatically triaged and labeled
@@ -62,17 +85,15 @@ That's it. From now on:
 
 No CLI needed. Just talk to the bot in the issue thread.
 
-## How it works
+## GitHub Actions triggers
 
-```
-Issue opened
-    ↓
-[Triage] → valid / invalid / duplicate / needs-info
-    ↓
-[Analyze] → affected files, fix approach, checklist
-    ↓
-[Fix] → auto-eligible? → Claude Code creates PR
-```
+| Event | Trigger | Action |
+|-------|---------|--------|
+| Issue opened/reopened | Automatic | Runs `analyze` (triage → analyze) |
+| `@beneissue triage` | Comment | Re-classify the issue |
+| `@beneissue analyze` | Comment | Run full analysis |
+| `@beneissue fix` | Comment | Attempt auto-fix now |
+| `@beneissue run` | Comment | Full pipeline: triage → analyze → fix |
 
 ## Verify it's working
 
