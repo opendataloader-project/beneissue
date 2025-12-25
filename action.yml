@@ -37,7 +37,7 @@ runs:
 
     - name: Install beneissue
       shell: bash
-      run: uv pip install --system --refresh beneissue>=1.0.1
+      run: uv pip install --system --refresh beneissue>=1.0.2
 
     - name: Run beneissue
       shell: bash
