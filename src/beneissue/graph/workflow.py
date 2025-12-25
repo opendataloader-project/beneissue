@@ -2,9 +2,11 @@
 
 from typing import Optional
 
+from langgraph.cache.memory import InMemoryCache
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
+from langgraph.types import CachePolicy
 
 from beneissue.graph.routing import (
     route_after_analyze,
@@ -18,13 +20,22 @@ from beneissue.nodes.fix import fix_node
 from beneissue.nodes.intake import intake_node
 from beneissue.nodes.triage import triage_node
 
+# Cache policies for expensive LLM nodes
+# TTL in seconds: 3600 = 1 hour, useful for development/testing
+TRIAGE_CACHE_POLICY = CachePolicy(ttl=3600)
+ANALYZE_CACHE_POLICY = CachePolicy(ttl=3600)
 
-def _build_triage_graph() -> StateGraph:
+
+def _build_triage_graph(*, enable_cache: bool = False) -> StateGraph:
     """Build triage-only graph: intake → triage → apply_labels."""
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
-    workflow.add_node("triage", triage_node)
+    workflow.add_node(
+        "triage",
+        triage_node,
+        cache_policy=TRIAGE_CACHE_POLICY if enable_cache else None,
+    )
     workflow.add_node("apply_labels", apply_labels_node)
 
     workflow.set_entry_point("intake")
@@ -37,17 +48,30 @@ def _build_triage_graph() -> StateGraph:
 
 def create_triage_workflow(
     checkpointer: Optional[BaseCheckpointSaver] = None,
+    *,
+    enable_cache: bool = False,
 ) -> StateGraph:
-    """Create triage-only workflow with optional checkpointing."""
-    return _build_triage_graph().compile(checkpointer=checkpointer)
+    """Create triage-only workflow with optional checkpointing and caching.
+
+    Args:
+        checkpointer: Optional checkpoint saver for state persistence.
+        enable_cache: Enable node-level caching for triage (reduces API costs).
+    """
+    graph = _build_triage_graph(enable_cache=enable_cache)
+    cache = InMemoryCache() if enable_cache else None
+    return graph.compile(checkpointer=checkpointer, cache=cache)
 
 
-def _build_analyze_graph() -> StateGraph:
+def _build_analyze_graph(*, enable_cache: bool = False) -> StateGraph:
     """Build analyze-only graph: intake → analyze → post_comment → apply_labels."""
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
-    workflow.add_node("analyze", analyze_node)
+    workflow.add_node(
+        "analyze",
+        analyze_node,
+        cache_policy=ANALYZE_CACHE_POLICY if enable_cache else None,
+    )
     workflow.add_node("apply_labels", apply_labels_node)
     workflow.add_node("post_comment", post_comment_node)
 
@@ -64,9 +88,18 @@ def _build_analyze_graph() -> StateGraph:
 
 def create_analyze_workflow(
     checkpointer: Optional[BaseCheckpointSaver] = None,
+    *,
+    enable_cache: bool = False,
 ) -> StateGraph:
-    """Create analyze-only workflow with optional checkpointing."""
-    return _build_analyze_graph().compile(checkpointer=checkpointer)
+    """Create analyze-only workflow with optional checkpointing and caching.
+
+    Args:
+        checkpointer: Optional checkpoint saver for state persistence.
+        enable_cache: Enable node-level caching for analyze (reduces API costs).
+    """
+    graph = _build_analyze_graph(enable_cache=enable_cache)
+    cache = InMemoryCache() if enable_cache else None
+    return graph.compile(checkpointer=checkpointer, cache=cache)
 
 
 def _build_fix_graph() -> StateGraph:
@@ -103,14 +136,22 @@ def create_fix_workflow(
     return _build_fix_graph().compile(checkpointer=checkpointer)
 
 
-def _build_full_graph() -> StateGraph:
+def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
     """Build the full graph with triage, analyze, fix, and actions."""
     workflow = StateGraph(IssueState)
 
-    # Add all nodes
+    # Add all nodes (with optional caching for expensive LLM nodes)
     workflow.add_node("intake", intake_node)
-    workflow.add_node("triage", triage_node)
-    workflow.add_node("analyze", analyze_node)
+    workflow.add_node(
+        "triage",
+        triage_node,
+        cache_policy=TRIAGE_CACHE_POLICY if enable_cache else None,
+    )
+    workflow.add_node(
+        "analyze",
+        analyze_node,
+        cache_policy=ANALYZE_CACHE_POLICY if enable_cache else None,
+    )
     workflow.add_node("fix", fix_node)
     workflow.add_node("apply_labels", apply_labels_node)
     workflow.add_node("post_comment", post_comment_node)
@@ -159,18 +200,24 @@ def _build_full_graph() -> StateGraph:
 
 def create_full_workflow(
     checkpointer: Optional[BaseCheckpointSaver] = None,
+    *,
+    enable_cache: bool = False,
 ) -> StateGraph:
-    """Create the full workflow with optional checkpointing.
+    """Create the full workflow with optional checkpointing and caching.
 
     Args:
         checkpointer: Optional checkpoint saver for state persistence.
             Use MemorySaver() for in-memory checkpointing or
             SqliteSaver for persistent storage.
+        enable_cache: Enable node-level caching for triage/analyze nodes.
+            Useful for development and testing to reduce API costs.
 
     Returns:
         Compiled workflow graph.
     """
-    return _build_full_graph().compile(checkpointer=checkpointer)
+    graph = _build_full_graph(enable_cache=enable_cache)
+    cache = InMemoryCache() if enable_cache else None
+    return graph.compile(checkpointer=checkpointer, cache=cache)
 
 
 # Compiled workflow instances (without checkpointing for backward compatibility)
@@ -195,17 +242,21 @@ def get_thread_id(repo: str, issue_number: int) -> str:
 
 def create_checkpointed_workflow(
     workflow_type: str = "full",
+    *,
+    enable_cache: bool = False,
 ) -> tuple[StateGraph, MemorySaver]:
-    """Create a workflow with MemorySaver checkpointing.
+    """Create a workflow with MemorySaver checkpointing and optional caching.
 
     Args:
         workflow_type: One of "triage", "analyze", "fix", or "full".
+        enable_cache: Enable node-level caching to reduce API costs.
 
     Returns:
         Tuple of (compiled workflow, checkpointer).
 
     Example:
-        graph, checkpointer = create_checkpointed_workflow("full")
+        # For development with caching enabled
+        graph, checkpointer = create_checkpointed_workflow("full", enable_cache=True)
         thread_id = get_thread_id("owner/repo", 123)
         result = graph.invoke(
             {"repo": "owner/repo", "issue_number": 123},
@@ -220,4 +271,7 @@ def create_checkpointed_workflow(
         "full": create_full_workflow,
     }
     creator = creators.get(workflow_type, create_full_workflow)
-    return creator(checkpointer=checkpointer), checkpointer
+    # fix workflow doesn't support caching
+    if workflow_type == "fix":
+        return creator(checkpointer=checkpointer), checkpointer
+    return creator(checkpointer=checkpointer, enable_cache=enable_cache), checkpointer
