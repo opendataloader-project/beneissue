@@ -43,17 +43,8 @@ def create_analyze_workflow() -> StateGraph:
     workflow.set_entry_point("intake")
     workflow.add_edge("intake", "analyze")
 
-    # Route based on analyze result
-    workflow.add_conditional_edges(
-        "analyze",
-        route_after_analyze,
-        {
-            "fix": "apply_labels",  # No fix in this workflow, just apply labels
-            "apply_labels": "apply_labels",
-            "post_comment": "post_comment",
-        },
-    )
-
+    # Always post comment after analyze
+    workflow.add_edge("analyze", "post_comment")
     workflow.add_edge("post_comment", "apply_labels")
     workflow.add_edge("apply_labels", END)
 
