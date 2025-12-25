@@ -46,6 +46,7 @@ pip install beneissue
 |--------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Your Claude API key |
 | `LANGCHAIN_API_KEY` | No | LangSmith for tracing |
+| `LANGCHAIN_PROJECT` | No | LangSmith project name (default: `beneissue`) |
 
 **Permissions:** Go to Settings → Actions → General → Workflow permissions:
 - Enable "Allow GitHub Actions to create and approve pull requests"
@@ -121,12 +122,18 @@ team:
   - github_id: "your-github-id"
     available: true
     specialties: ["backend", "python"]
-
-observability:
-  langsmith:
-    enabled: true
-    project: "beneissue"
 ```
+
+### LangSmith (optional)
+
+Set environment variables for tracing:
+
+```bash
+export LANGCHAIN_API_KEY=your-langsmith-api-key
+export LANGCHAIN_PROJECT=your-project-name  # default: beneissue
+```
+
+When `LANGCHAIN_API_KEY` is set, LangSmith tracing is automatically enabled.
 
 ## Labels
 

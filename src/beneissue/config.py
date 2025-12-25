@@ -67,19 +67,8 @@ class DailyLimitsConfig:
     fix: int = DEFAULT_DAILY_LIMIT_FIX
 
 
-@dataclass
-class LangSmithConfig:
-    """LangSmith observability configuration."""
-
-    enabled: bool = True
-    project: str = "beneissue"
-
-
-@dataclass
-class ObservabilityConfig:
-    """Observability configuration."""
-
-    langsmith: LangSmithConfig = field(default_factory=LangSmithConfig)
+# Default LangSmith project name (used when LANGCHAIN_PROJECT env var is not set)
+DEFAULT_LANGSMITH_PROJECT = "beneissue"
 
 
 @dataclass
@@ -119,7 +108,6 @@ class BeneissueConfig:
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     team: list[TeamMember] = field(default_factory=list)
     limits: LimitsConfig = field(default_factory=LimitsConfig)
-    observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
     labels: LabelsConfig = field(default_factory=LabelsConfig)
 
 
@@ -213,12 +201,6 @@ def load_config(repo_path: Optional[Path] = None) -> BeneissueConfig:
             )
             config.limits.daily.fix = daily.get("fix", DEFAULT_DAILY_LIMIT_FIX)
 
-        # Parse observability
-        if "observability" in data and "langsmith" in data["observability"]:
-            ls = data["observability"]["langsmith"]
-            config.observability.langsmith.enabled = ls.get("enabled", True)
-            config.observability.langsmith.project = ls.get("project", "beneissue")
-
         # Parse labels
         if "labels" in data:
             labels_data = data["labels"]
@@ -269,29 +251,22 @@ def get_available_assignee(
     return None
 
 
-def setup_langsmith(config: Optional[BeneissueConfig] = None) -> bool:
-    """Configure LangSmith tracing if enabled and API key is available.
+def setup_langsmith() -> bool:
+    """Configure LangSmith tracing if API key is available.
 
-    Args:
-        config: Optional config. If None, loads from default location.
+    LangSmith project name is determined by:
+    1. LANGCHAIN_PROJECT environment variable (if set)
+    2. Default: "beneissue"
 
     Returns:
         True if LangSmith is enabled, False otherwise.
     """
-    if config is None:
-        config = load_config()
-
-    # Check if disabled in config
-    if not config.observability.langsmith.enabled:
-        os.environ["LANGCHAIN_TRACING_V2"] = "false"
-        return False
-
     # Check if API key is set
     if not os.environ.get("LANGCHAIN_API_KEY"):
         os.environ["LANGCHAIN_TRACING_V2"] = "false"
         return False
 
-    # Enable tracing
+    # Enable tracing with defaults
     os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
-    os.environ.setdefault("LANGCHAIN_PROJECT", config.observability.langsmith.project)
+    os.environ.setdefault("LANGCHAIN_PROJECT", DEFAULT_LANGSMITH_PROJECT)
     return True

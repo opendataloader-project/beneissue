@@ -7,14 +7,18 @@ beneissue uses LangSmith to trace LLM calls and workflow execution.
 ### Environment Variables
 
 ```bash
-export LANGCHAIN_TRACING_V2=true
-export LANGCHAIN_API_KEY=your-api-key
-export LANGCHAIN_PROJECT=beneissue  # optional
+export LANGCHAIN_API_KEY=your-api-key           # Required for LangSmith
+export LANGCHAIN_PROJECT=your-project-name      # Optional (default: beneissue)
 ```
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `LANGCHAIN_API_KEY` | Yes | Your LangSmith API key |
+| `LANGCHAIN_PROJECT` | No | Project name in LangSmith dashboard (default: `beneissue`) |
 
 ### Automatic Setup
 
-LangSmith is automatically configured when running `beneissue` CLI commands.
+LangSmith is automatically configured when `LANGCHAIN_API_KEY` is set.
 
 ```python
 # src/beneissue/config.py
@@ -23,6 +27,8 @@ def setup_langsmith():
         os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
         os.environ.setdefault("LANGCHAIN_PROJECT", "beneissue")
 ```
+
+**Note:** No config file settings needed. Just set the environment variables.
 
 ## Applied Features
 
@@ -82,7 +88,7 @@ Stderr logging visible in GitHub Actions.
 ## Viewing in LangSmith Dashboard
 
 1. Go to [LangSmith](https://smith.langchain.com)
-2. Select project `beneissue`
+2. Select your project (default: `beneissue`, or your `LANGCHAIN_PROJECT` value)
 3. View execution history in the Traces tab
 
 **Available information:**

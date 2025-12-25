@@ -14,12 +14,6 @@ limits:
     analyze: 20  # ~$2-10/day with Sonnet
     fix: 5       # ~$5-25/day with Claude Code
 
-# Observability
-observability:
-  langsmith:
-    enabled: true
-    project: "beneissue"
-
 # Team settings (for assignee recommendation)
 team:
   - github_id: ""
