@@ -109,9 +109,6 @@ Edit `.claude/skills/beneissue/beneissue-config.yml`:
 ```yaml
 version: "1.0"
 
-models:
-  triage: claude-haiku-4-5    # Fast, cheap (~$0.02/call)
-
 limits:
   daily:
     triage: 50   # ~$1/day

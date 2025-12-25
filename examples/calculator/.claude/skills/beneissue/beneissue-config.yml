@@ -2,23 +2,12 @@
 # Location: .claude/skills/beneissue/beneissue-config.yml
 version: "1.0"
 
-# AI model settings
-# Note: analyze and fix use Claude Code CLI (no model config needed)
-models:
-  triage: claude-haiku-4-5    # Fast triage (~$0.02/call)
-
 # Daily limits (cost control)
 limits:
   daily:
-    triage: 50   # ~$1/day with Haiku
-    analyze: 20  # ~$2-10/day with Sonnet
-    fix: 5       # ~$5-25/day with Claude Code
-
-# Observability
-observability:
-  langsmith:
-    enabled: true
-    project: "beneissue"
+    triage: 50
+    analyze: 20
+    fix: 5
 
 # Team settings (for assignee recommendation)
 team:

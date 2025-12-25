@@ -5,7 +5,6 @@ from tempfile import TemporaryDirectory
 
 from beneissue.config import (
     DEFAULT_SCORE_THRESHOLD,
-    DEFAULT_TRIAGE_MODEL,
     get_available_assignee,
     load_config,
 )
@@ -19,7 +18,6 @@ class TestLoadConfig:
         with TemporaryDirectory() as tmpdir:
             config = load_config(Path(tmpdir))
 
-            assert config.models.triage == DEFAULT_TRIAGE_MODEL
             assert config.scoring.threshold == DEFAULT_SCORE_THRESHOLD
 
     def test_load_from_file(self):
@@ -31,8 +29,6 @@ class TestLoadConfig:
             config_file = config_dir / "beneissue-config.yml"
             config_file.write_text("""
 version: "1.0"
-models:
-  triage: claude-sonnet-4
 scoring:
   threshold: 90
   criteria:
@@ -42,7 +38,6 @@ scoring:
 
             config = load_config(Path(tmpdir))
 
-            assert config.models.triage == "claude-sonnet-4"
             assert config.scoring.threshold == 90
             assert config.scoring.criteria.scope == 25
             assert config.scoring.criteria.risk == 25
@@ -56,20 +51,16 @@ scoring:
             config_file = config_dir / "beneissue-config.yml"
             config_file.write_text("""
 version: "1.0"
-models:
-  triage: claude-haiku-4-5
 scoring:
   threshold: 80
 """)
 
             # Set environment variable
-            monkeypatch.setenv("BENEISSUE_MODEL_TRIAGE", "claude-sonnet-4")
             monkeypatch.setenv("BENEISSUE_SCORE_THRESHOLD", "75")
 
             config = load_config(Path(tmpdir))
 
             # Env should override file
-            assert config.models.triage == "claude-sonnet-4"
             assert config.scoring.threshold == 75
 
     def test_minimal_config(self):
@@ -86,7 +77,7 @@ version: "1.0"
             config = load_config(Path(tmpdir))
 
             # Defaults should apply
-            assert config.models.triage == DEFAULT_TRIAGE_MODEL
+            assert config.scoring.threshold == DEFAULT_SCORE_THRESHOLD
 
     def test_team_config(self):
         """Should parse team configuration."""

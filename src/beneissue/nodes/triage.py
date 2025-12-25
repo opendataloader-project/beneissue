@@ -5,7 +5,7 @@ from pathlib import Path
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from beneissue.config import load_config
+from beneissue.config import DEFAULT_TRIAGE_MODEL
 from beneissue.graph.state import IssueState
 from beneissue.integrations.github import format_existing_issues
 from beneissue.labels import get_triage_labels
@@ -42,8 +42,7 @@ def _build_triage_prompt(state: IssueState) -> str:
 @traced_node("triage", run_type="chain", log_output=True)
 def triage_node(state: IssueState) -> dict:
     """Classify an issue using Claude."""
-    config = load_config()
-    llm = ChatAnthropic(model=config.models.triage)
+    llm = ChatAnthropic(model=DEFAULT_TRIAGE_MODEL)
 
     system_prompt = _build_triage_prompt(state)
 

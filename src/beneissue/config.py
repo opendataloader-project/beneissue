@@ -22,16 +22,6 @@ CONFIG_PATH = ".claude/skills/beneissue/beneissue-config.yml"
 
 
 @dataclass
-class ModelsConfig:
-    """Model configuration.
-
-    Note: Only triage uses LangChain API. Analyze and fix use Claude Code CLI.
-    """
-
-    triage: str = DEFAULT_TRIAGE_MODEL
-
-
-@dataclass
 class ScoringCriteria:
     """Scoring criteria weights."""
 
@@ -104,7 +94,6 @@ class BeneissueConfig:
     """Main configuration class."""
 
     version: str = "1.0"
-    models: ModelsConfig = field(default_factory=ModelsConfig)
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     team: list[TeamMember] = field(default_factory=list)
     limits: LimitsConfig = field(default_factory=LimitsConfig)
@@ -164,10 +153,6 @@ def load_config(repo_path: Optional[Path] = None) -> BeneissueConfig:
         with open(config_file) as f:
             data = yaml.safe_load(f) or {}
 
-        # Parse models
-        if "models" in data:
-            config.models.triage = data["models"].get("triage", DEFAULT_TRIAGE_MODEL)
-
         # Parse scoring
         if "scoring" in data:
             config.scoring.threshold = data["scoring"].get(
@@ -218,8 +203,6 @@ def load_config(repo_path: Optional[Path] = None) -> BeneissueConfig:
                 config.labels.contribution = _parse_labels(labels_data["contribution"])
 
     # Override with environment variables
-    if env_triage := os.environ.get("BENEISSUE_MODEL_TRIAGE"):
-        config.models.triage = env_triage
     if env_threshold := os.environ.get("BENEISSUE_SCORE_THRESHOLD"):
         config.scoring.threshold = int(env_threshold)
 
