@@ -1,6 +1,8 @@
-# beneissue
+# BeneIssue
 
-Drowning in GitHub issues? Install beneissue once, and it handles the rest automatically.
+AI-Agentic issue automation for GitHub.
+
+Drowning in GitHub issues? Install `beneissue` once, and it handles the rest automatically.
 
 ## Who is this for?
 
