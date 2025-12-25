@@ -26,7 +26,7 @@ def intake_node(state: IssueState) -> dict:
         result["existing_issues"] = []
 
     # Check daily rate limit using config
-    daily_limit = config.policy.daily_limits.triage
+    daily_limit = config.limits.daily.triage
     try:
         run_count = get_daily_run_count(repo, "beneissue-workflow.yml")
         result["daily_run_count"] = run_count
