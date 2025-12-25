@@ -2,7 +2,6 @@
 
 import os
 import secrets
-import sys
 import tempfile
 from pathlib import Path
 
@@ -20,12 +19,9 @@ from beneissue.integrations.git import (
 )
 from beneissue.integrations.github import clone_repo, create_pull_request
 from beneissue.nodes.schemas import FixResult
+from beneissue.observability import get_node_logger
 
-
-def _log(message: str, level: str = "info") -> None:
-    """Log message to stderr for GitHub Actions visibility."""
-    prefix = {"info": "ℹ️", "success": "✅", "error": "❌", "warning": "⚠️"}.get(level, "")
-    print(f"{prefix} [fix] {message}", file=sys.stderr, flush=True)
+logger = get_node_logger("fix")
 
 
 # Load prompt from file
@@ -122,28 +118,26 @@ def _run_claude_code_fix(repo_path: str, prompt: str) -> tuple[FixResult | None,
     )
 
     if result.stdout:
-        _log("=== Claude Code Output ===")
-        print(result.stdout, file=sys.stderr, flush=True)
-        _log("=== End Claude Code Output ===")
+        logger.debug("Claude Code Output:\n%s", result.stdout)
 
     if result.error:
-        _log(f"Claude Code error: {result.error}", "error")
+        logger.error("Claude Code error: %s", result.error)
         return None, _error_result(result.error)
 
     if not result.success:
-        _log(f"Claude Code failed with return code {result.returncode}", "error")
+        logger.error("Claude Code failed with return code %s", result.returncode)
         if result.stderr:
-            _log(f"stderr: {result.stderr[:500]}", "error")
+            logger.error("stderr: %s", result.stderr[:500])
         return None, _error_result(result.stderr[:500] if result.stderr else "Unknown error")
 
     fix_result = _parse_fix_output(result.stdout)
     if fix_result:
-        _log(f"Fix result: success={fix_result.success}, title={fix_result.title}")
+        logger.info("Fix result: success=%s, title=%s", fix_result.success, fix_result.title)
     else:
-        _log("Could not parse structured fix result from output", "warning")
+        logger.warning("Could not parse structured fix result from output")
 
     if fix_result and not fix_result.success:
-        _log(f"Fix reported failure: {fix_result.error}", "error")
+        logger.error("Fix reported failure: %s", fix_result.error)
         return None, _error_result(fix_result.error or "Fix reported failure")
 
     return fix_result, None
@@ -156,7 +150,7 @@ def _commit_and_push(
     random_suffix = secrets.token_hex(3)
     branch_name = f"fix/issue-{issue_number}-{random_suffix}"
     git_checkout_branch(repo_path, branch_name)
-    _log(f"Created branch: {branch_name}")
+    logger.info("Created branch: %s", branch_name)
 
     commit_title = (
         fix_result.title
@@ -171,13 +165,13 @@ def _commit_and_push(
     configure_git_user(repo_path)
     git_add_all(repo_path)
     git_commit(repo_path, commit_msg)
-    _log(f"Committed with message: {commit_title}")
+    logger.info("Committed with message: %s", commit_title)
 
-    _log(f"Pushing branch {branch_name}...")
+    logger.info("Pushing branch %s...", branch_name)
     push_result = git_push(repo_path, branch_name)
     if not push_result.success:
         push_error = push_result.stderr[:200]
-        _log(f"Failed to push: {push_error}", "error")
+        logger.error("Failed to push: %s", push_error)
         return branch_name, _error_result(f"Failed to push: {push_error}")
 
     return branch_name, None
@@ -189,37 +183,37 @@ def fix_node(state: IssueState) -> dict:
     prompt = _build_fix_prompt(state)
     issue_number = state["issue_number"]
 
-    _log(f"Starting fix for issue #{issue_number}")
+    logger.info("Starting fix for issue #%s", issue_number)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         repo_path = os.path.join(temp_dir, "repo")
 
-        _log(f"Cloning repository {state['repo']}...")
+        logger.info("Cloning repository %s...", state["repo"])
         if not clone_repo(state["repo"], repo_path):
-            _log("Failed to clone repository", "error")
+            logger.error("Failed to clone repository")
             return _error_result("Failed to clone repository", "fix/failed")
 
-        _log("Running Claude Code to analyze and fix...")
+        logger.info("Running Claude Code to analyze and fix...")
         fix_result, error = _run_claude_code_fix(repo_path, prompt)
         if error:
             return error
 
         changes = git_status(repo_path)
         if not changes:
-            _log("No changes were made by Claude Code", "warning")
+            logger.warning("No changes were made by Claude Code")
             return _error_result("No changes were made")
 
-        _log(f"Changes detected:\n{changes}")
+        logger.debug("Changes detected:\n%s", changes)
 
         branch_name, error = _commit_and_push(repo_path, issue_number, fix_result)
         if error:
             return error
 
-        _log("Creating pull request...")
+        logger.info("Creating pull request...")
         pr_success, pr_url, pr_error = _create_pr(state, fix_result, branch_name)
 
         if pr_success and pr_url:
-            _log(f"PR created: {pr_url}", "success")
+            logger.info("PR created: %s", pr_url)
             return {
                 "fix_success": True,
                 "pr_url": pr_url,
@@ -227,5 +221,5 @@ def fix_node(state: IssueState) -> dict:
                 "labels_to_add": ["fix/completed"],
             }
 
-        _log(f"Failed to create PR: {pr_error}", "error")
+        logger.error("Failed to create PR: %s", pr_error)
         return _error_result(pr_error or "Failed to create PR")

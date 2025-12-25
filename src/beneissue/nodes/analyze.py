@@ -1,7 +1,6 @@
 """Analyze node implementation using Claude Code."""
 
 import os
-import sys
 import tempfile
 from pathlib import Path
 
@@ -11,12 +10,9 @@ from beneissue.graph.state import IssueState
 from beneissue.integrations.claude_code import parse_json_from_output, run_claude_code
 from beneissue.integrations.github import clone_repo
 from beneissue.nodes.schemas import AnalyzeResult
+from beneissue.observability import get_node_logger
 
-
-def _log(message: str, level: str = "info") -> None:
-    """Log message to stderr for GitHub Actions visibility."""
-    prefix = {"info": "ℹ️", "success": "✅", "error": "❌", "warning": "⚠️"}.get(level, "")
-    print(f"{prefix} [analyze] {message}", file=sys.stderr, flush=True)
+logger = get_node_logger("analyze")
 
 
 # Load prompt from file
@@ -54,7 +50,7 @@ def _run_analysis(
     repo_path: str, prompt: str, *, verbose: bool = False, repo_owner: str | None = None
 ) -> dict:
     """Run Claude Code analysis on a repository path."""
-    _log("Running Claude Code to analyze issue...")
+    logger.info("Running Claude Code to analyze issue...")
 
     result = run_claude_code(
         prompt=prompt,
@@ -65,29 +61,28 @@ def _run_analysis(
     )
 
     if result.stdout:
-        _log("=== Claude Code Output ===")
-        print(result.stdout, file=sys.stderr, flush=True)
-        _log("=== End Claude Code Output ===")
+        logger.debug("Claude Code Output:\n%s", result.stdout)
 
     if result.error:
-        _log(f"Analysis error: {result.error}", "error")
+        logger.error("Analysis error: %s", result.error)
         return _fallback_analyze(result.error, repo_owner=repo_owner)
 
     if not result.success:
         error_msg = result.stderr[:200] if result.stderr else "Unknown error"
-        _log(f"Analysis failed: {error_msg}", "error")
+        logger.error("Analysis failed: %s", error_msg)
         return _fallback_analyze(error_msg, repo_owner=repo_owner)
 
     response = _parse_analyze_response(result.stdout)
 
     if response:
-        _log(
-            f"Analysis complete: fix_decision={response.fix_decision}, priority={response.priority}",
-            "success",
+        logger.info(
+            "Analysis complete: fix_decision=%s, priority=%s",
+            response.fix_decision,
+            response.priority,
         )
         return _build_result(response, repo_owner=repo_owner)
 
-    _log(f"Failed to parse analysis output: {result.stdout[:200]}", "error")
+    logger.error("Failed to parse analysis output: %s", result.stdout[:200])
     return _fallback_analyze(
         f"Failed to parse analysis output: {result.stdout[:200]}", repo_owner=repo_owner
     )
@@ -99,14 +94,14 @@ def analyze_node(state: IssueState) -> dict:
     prompt = _build_analyze_prompt(state)
     verbose = state.get("verbose", False)
 
-    _log(f"Starting analysis for issue: {state.get('issue_title', 'Unknown')}")
+    logger.info("Starting analysis for issue: %s", state.get("issue_title", "Unknown"))
 
     repo = state.get("repo", "")
     repo_owner = repo.split("/")[0] if "/" in repo else None
 
     # Use project_root if provided (for testing), otherwise clone
     if state.get("project_root"):
-        _log(f"Using local project root: {state['project_root']}")
+        logger.info("Using local project root: %s", state["project_root"])
         return _run_analysis(
             str(state["project_root"]), prompt, verbose=verbose, repo_owner=repo_owner
         )
@@ -114,9 +109,9 @@ def analyze_node(state: IssueState) -> dict:
     with tempfile.TemporaryDirectory() as temp_dir:
         repo_path = os.path.join(temp_dir, "repo")
 
-        _log(f"Cloning repository {repo}...")
+        logger.info("Cloning repository %s...", repo)
         if not clone_repo(state["repo"], repo_path):
-            _log("Failed to clone repository", "error")
+            logger.error("Failed to clone repository")
             return _fallback_analyze("Failed to clone repository", repo_owner=repo_owner)
 
         return _run_analysis(repo_path, prompt, verbose=verbose, repo_owner=repo_owner)

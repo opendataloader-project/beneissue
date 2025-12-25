@@ -4,7 +4,7 @@ Provides logging, timing, and tracing for LangGraph nodes.
 """
 
 import functools
-import sys
+import logging
 import time
 from typing import Any, Callable, TypeVar
 
@@ -12,18 +12,13 @@ from langsmith import traceable
 
 F = TypeVar("F", bound=Callable[..., Any])
 
+# Configure module logger
+logger = logging.getLogger("beneissue")
 
-def _log(message: str, level: str = "info", node: str = "node") -> None:
-    """Log message to stderr for GitHub Actions visibility."""
-    prefix = {
-        "info": "ℹ️",
-        "success": "✅",
-        "error": "❌",
-        "warning": "⚠️",
-        "start": "🚀",
-        "end": "🏁",
-    }.get(level, "")
-    print(f"{prefix} [{node}] {message}", file=sys.stderr, flush=True)
+
+def get_node_logger(node: str) -> logging.Logger:
+    """Get a logger for a specific node."""
+    return logging.getLogger(f"beneissue.{node}")
 
 
 def traced_node(
@@ -52,14 +47,15 @@ def traced_node(
     def decorator(func: F) -> F:
         # Apply LangSmith traceable decorator
         traced_func = traceable(name=name, run_type=run_type)(func)
+        node_logger = get_node_logger(name)
 
         @functools.wraps(func)
         def wrapper(state: dict, *args: Any, **kwargs: Any) -> dict:
             # Pre-execution logging
-            _log(f"Starting...", "start", name)
+            node_logger.info("Starting...")
             if log_input:
                 input_keys = [k for k in state.keys() if state.get(k) is not None]
-                _log(f"Input keys: {input_keys}", "info", name)
+                node_logger.info("Input keys: %s", input_keys)
 
             start_time = time.perf_counter()
 
@@ -75,15 +71,15 @@ def traced_node(
 
                 if log_output and isinstance(result, dict):
                     output_keys = list(result.keys())
-                    _log(f"Completed in {elapsed_str}, output: {output_keys}", "success", name)
+                    node_logger.info("Completed in %s, output: %s", elapsed_str, output_keys)
                 else:
-                    _log(f"Completed in {elapsed_str}", "success", name)
+                    node_logger.info("Completed in %s", elapsed_str)
 
                 return result
 
             except Exception as e:
                 elapsed = time.perf_counter() - start_time
-                _log(f"Failed after {elapsed:.2f}s: {e}", "error", name)
+                node_logger.error("Failed after %.2fs: %s", elapsed, e)
                 raise
 
         return wrapper  # type: ignore
@@ -103,8 +99,11 @@ def log_node_event(node: str, event: str, level: str = "info", **data: Any) -> N
     Example:
         log_node_event("triage", "duplicate detected", duplicate_of=42)
     """
+    node_logger = get_node_logger(node)
+    log_func = getattr(node_logger, level if level in ("info", "warning", "error") else "info")
+
     if data:
         data_str = ", ".join(f"{k}={v}" for k, v in data.items())
-        _log(f"{event} ({data_str})", level, node)
+        log_func("%s (%s)", event, data_str)
     else:
-        _log(event, level, node)
+        log_func("%s", event)
