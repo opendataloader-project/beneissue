@@ -24,14 +24,17 @@ Drowning in GitHub issues? Install beneissue once, and it handles the rest autom
 pip install beneissue
 ```
 
-### 2. Set up GitHub repository secrets
+### 2. Set up GitHub repository
 
-Go to your repo → Settings → Secrets and variables → Actions, and add:
+**Secrets:** Go to Settings → Secrets and variables → Actions:
 
 | Secret | Required | Description |
 |--------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Your Claude API key |
 | `LANGCHAIN_API_KEY` | No | LangSmith for tracing |
+
+**Permissions:** Go to Settings → Actions → General → Workflow permissions:
+- Enable "Allow GitHub Actions to create and approve pull requests"
 
 ### 3. Initialize in your repo
 
