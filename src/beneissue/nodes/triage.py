@@ -11,10 +11,7 @@ from beneissue.integrations.github import format_existing_issues
 from beneissue.labels import get_triage_labels
 from beneissue.nodes.schemas import TriageResult
 from beneissue.observability import log_node_event, traced_node
-
-# Load prompt from file
-PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "triage.md"
-TRIAGE_PROMPT = PROMPT_PATH.read_text()
+from beneissue.prompts import load_prompt
 
 
 def _build_triage_prompt(state: IssueState) -> str:
@@ -33,7 +30,7 @@ def _build_triage_prompt(state: IssueState) -> str:
         format_existing_issues(existing) if existing else "No existing issues loaded."
     )
 
-    return TRIAGE_PROMPT.format(
+    return load_prompt("triage").format(
         readme_content=readme_content,
         existing_issues=existing_issues,
     )

@@ -2,6 +2,9 @@
 
 from beneissue.graph.state import IssueState
 from beneissue.integrations.github import get_github_client
+from beneissue.observability import get_node_logger
+
+logger = get_node_logger("actions")
 
 
 def apply_labels_node(state: IssueState) -> dict:
@@ -16,9 +19,8 @@ def apply_labels_node(state: IssueState) -> dict:
         for label in labels_to_add:
             try:
                 issue.add_to_labels(label)
-            except Exception:
-                # Label might not exist, skip
-                pass
+            except Exception as e:
+                logger.warning("Failed to add label '%s': %s", label, e)
 
     # Remove labels
     labels_to_remove = state.get("labels_to_remove", [])
@@ -26,18 +28,16 @@ def apply_labels_node(state: IssueState) -> dict:
         for label in labels_to_remove:
             try:
                 issue.remove_from_labels(label)
-            except Exception:
-                # Label might not be on issue, skip
-                pass
+            except Exception as e:
+                logger.warning("Failed to remove label '%s': %s", label, e)
 
     # Assign issue
     assignee = state.get("assignee")
     if assignee:
         try:
             issue.add_to_assignees(assignee)
-        except Exception:
-            # Assignee might not have permission, skip
-            pass
+        except Exception as e:
+            logger.warning("Failed to assign '%s': %s", assignee, e)
 
     return {}
 

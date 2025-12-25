@@ -2,22 +2,18 @@
 
 import os
 import tempfile
-from pathlib import Path
 
 from langsmith import traceable
 
 from beneissue.graph.state import IssueState
-from beneissue.integrations.claude_code import parse_json_from_output, run_claude_code
+from beneissue.integrations.claude_code import run_claude_code
 from beneissue.integrations.github import clone_repo
 from beneissue.nodes.schemas import AnalyzeResult
+from beneissue.nodes.utils import extract_repo_owner, parse_result
 from beneissue.observability import get_node_logger
+from beneissue.prompts import load_prompt
 
 logger = get_node_logger("analyze")
-
-
-# Load prompt from file
-PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "analyze.md"
-ANALYZE_PROMPT = PROMPT_PATH.read_text()
 
 # Timeout for Claude Code execution (3 minutes for analysis)
 CLAUDE_CODE_TIMEOUT = 180
@@ -26,9 +22,9 @@ CLAUDE_CODE_TIMEOUT = 180
 def _build_analyze_prompt(state: IssueState) -> str:
     """Build the analyze prompt for Claude Code."""
     repo = state.get("repo", "")
-    repo_owner = repo.split("/")[0] if "/" in repo else "unknown"
+    repo_owner = extract_repo_owner(repo) or "unknown"
 
-    return ANALYZE_PROMPT.format(
+    return load_prompt("analyze").format(
         issue_title=state["issue_title"],
         issue_body=state["issue_body"],
         repo_owner=repo_owner,
@@ -37,13 +33,7 @@ def _build_analyze_prompt(state: IssueState) -> str:
 
 def _parse_analyze_response(output: str) -> AnalyzeResult | None:
     """Parse Claude Code output to extract AnalyzeResult."""
-    data = parse_json_from_output(output, required_key="summary")
-    if data:
-        try:
-            return AnalyzeResult(**data)
-        except (ValueError, TypeError):
-            pass
-    return None
+    return parse_result(output, AnalyzeResult, required_key="summary")
 
 
 def _run_analysis(
@@ -97,7 +87,7 @@ def analyze_node(state: IssueState) -> dict:
     logger.info("Starting analysis for issue: %s", state.get("issue_title", "Unknown"))
 
     repo = state.get("repo", "")
-    repo_owner = repo.split("/")[0] if "/" in repo else None
+    repo_owner = extract_repo_owner(repo)
 
     # Use project_root if provided (for testing), otherwise clone
     if state.get("project_root"):

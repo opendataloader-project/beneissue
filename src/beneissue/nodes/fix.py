@@ -3,12 +3,11 @@
 import os
 import secrets
 import tempfile
-from pathlib import Path
 
 from langsmith import traceable
 
 from beneissue.graph.state import IssueState
-from beneissue.integrations.claude_code import parse_json_from_output, run_claude_code
+from beneissue.integrations.claude_code import run_claude_code
 from beneissue.integrations.git import (
     configure_git_user,
     git_add_all,
@@ -19,14 +18,11 @@ from beneissue.integrations.git import (
 )
 from beneissue.integrations.github import clone_repo, create_pull_request
 from beneissue.nodes.schemas import FixResult
+from beneissue.nodes.utils import parse_result
 from beneissue.observability import get_node_logger
+from beneissue.prompts import load_prompt
 
 logger = get_node_logger("fix")
-
-
-# Load prompt from file
-PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "fix.md"
-FIX_PROMPT = PROMPT_PATH.read_text()
 
 # Timeout for Claude Code execution (5 minutes)
 CLAUDE_CODE_TIMEOUT = 300
@@ -34,13 +30,7 @@ CLAUDE_CODE_TIMEOUT = 300
 
 def _parse_fix_output(output: str) -> FixResult | None:
     """Parse Claude Code output for FixResult JSON."""
-    data = parse_json_from_output(output, required_key="success")
-    if data:
-        try:
-            return FixResult(**data)
-        except (ValueError, TypeError):
-            pass
-    return None
+    return parse_result(output, FixResult, required_key="success")
 
 
 def _build_fix_prompt(state: IssueState) -> str:
@@ -52,7 +42,7 @@ def _build_fix_prompt(state: IssueState) -> str:
         else "No specific files identified"
     )
 
-    return FIX_PROMPT.format(
+    return load_prompt("fix").format(
         issue_number=state["issue_number"],
         issue_title=state["issue_title"],
         analysis_summary=state.get("analysis_summary", "No analysis available"),
