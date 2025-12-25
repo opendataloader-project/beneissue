@@ -112,7 +112,9 @@ def _create_pr(
     if result.returncode == 0:
         # gh pr create outputs the PR URL
         return result.stdout.decode().strip()
-    return None
+    # Return error message for debugging
+    stderr = result.stderr.decode() if result.stderr else "Unknown error"
+    return f"ERROR:{stderr[:200]}"
 
 
 @traceable(name="claude_code_fix", run_type="chain")
@@ -214,7 +216,7 @@ def fix_node(state: IssueState) -> dict:
             # Create PR
             pr_url = _create_pr(repo_path, state, fix_result)
 
-            if pr_url:
+            if pr_url and not pr_url.startswith("ERROR:"):
                 return {
                     "fix_success": True,
                     "pr_url": pr_url,
@@ -222,9 +224,10 @@ def fix_node(state: IssueState) -> dict:
                     "labels_to_add": ["fix/completed"],
                 }
             else:
+                error_msg = pr_url[6:] if pr_url and pr_url.startswith("ERROR:") else "Failed to create PR"
                 return {
                     "fix_success": False,
-                    "fix_error": "Failed to create PR",
+                    "fix_error": error_msg,
                     "labels_to_add": ["fix/manual-required"],
                 }
 
