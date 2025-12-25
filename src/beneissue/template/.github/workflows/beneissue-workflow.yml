@@ -9,6 +9,10 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  issues: write
+  contents: read
+
 jobs:
   analyze:
     # Run on new or reopened issues
