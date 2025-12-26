@@ -3,10 +3,10 @@
 import os
 import tempfile
 
-from langsmith import traceable
+from langsmith import get_current_run_tree, traceable
 
 from beneissue.graph.state import IssueState
-from beneissue.integrations.claude_code import run_claude_code
+from beneissue.integrations.claude_code import ClaudeCodeResult, run_claude_code
 from beneissue.integrations.github import clone_repo
 from beneissue.nodes.schemas import AnalyzeResult
 from beneissue.nodes.utils import extract_repo_owner, parse_result
@@ -36,6 +36,21 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
     return parse_result(output, AnalyzeResult, required_key="summary")
 
 
+def _track_usage_to_langsmith(result: ClaudeCodeResult) -> None:
+    """Track Claude Code usage to LangSmith."""
+    try:
+        run_tree = get_current_run_tree()
+        if run_tree and result.usage:
+            run_tree.add_metadata({"claude_code_usage": result.usage.to_dict()})
+            logger.info(
+                "Usage tracked: tokens=%d, cost=$%.4f",
+                result.usage.total_tokens,
+                result.usage.total_cost_usd,
+            )
+    except Exception as e:
+        logger.warning("Failed to track usage to LangSmith: %s", e)
+
+
 def _run_analysis(
     repo_path: str, prompt: str, *, verbose: bool = False, repo_owner: str | None = None
 ) -> dict:
@@ -49,6 +64,9 @@ def _run_analysis(
         timeout=CLAUDE_CODE_TIMEOUT,
         verbose=verbose,
     )
+
+    # Track usage to LangSmith
+    _track_usage_to_langsmith(result)
 
     if result.stdout:
         logger.debug("Claude Code Output:\n%s", result.stdout)

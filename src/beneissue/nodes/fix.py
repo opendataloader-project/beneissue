@@ -4,10 +4,10 @@ import os
 import secrets
 import tempfile
 
-from langsmith import traceable
+from langsmith import get_current_run_tree, traceable
 
 from beneissue.graph.state import IssueState
-from beneissue.integrations.claude_code import run_claude_code
+from beneissue.integrations.claude_code import ClaudeCodeResult, run_claude_code
 from beneissue.integrations.git import (
     configure_git_user,
     git_add_all,
@@ -115,6 +115,21 @@ def _error_result(error: str, label: str = "fix/manual-required") -> dict:
     }
 
 
+def _track_usage_to_langsmith(result: ClaudeCodeResult) -> None:
+    """Track Claude Code usage to LangSmith."""
+    try:
+        run_tree = get_current_run_tree()
+        if run_tree and result.usage:
+            run_tree.add_metadata({"claude_code_usage": result.usage.to_dict()})
+            logger.info(
+                "Usage tracked: tokens=%d, cost=$%.4f",
+                result.usage.total_tokens,
+                result.usage.total_cost_usd,
+            )
+    except Exception as e:
+        logger.warning("Failed to track usage to LangSmith: %s", e)
+
+
 def _run_claude_code_fix(repo_path: str, prompt: str) -> tuple[FixResult | None, dict | None]:
     """Run Claude Code and return parsed result or error dict.
 
@@ -128,6 +143,9 @@ def _run_claude_code_fix(repo_path: str, prompt: str) -> tuple[FixResult | None,
         timeout=CLAUDE_CODE_TIMEOUT,
         verbose=True,
     )
+
+    # Track usage to LangSmith
+    _track_usage_to_langsmith(result)
 
     if result.stdout:
         logger.debug("Claude Code Output:\n%s", result.stdout)
