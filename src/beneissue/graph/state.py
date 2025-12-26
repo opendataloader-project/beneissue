@@ -11,6 +11,7 @@ class IssueState(TypedDict, total=False):
     repo: str  # owner/repo
     issue_number: int
     project_root: Path  # Project root path (default: cwd)
+    command: Literal["triage", "analyze", "fix", "run"]  # Command type for limit check
     issue_title: str
     issue_body: str
     issue_labels: list[str]

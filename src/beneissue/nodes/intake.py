@@ -30,8 +30,18 @@ def intake_node(state: IssueState) -> dict:
     except Exception:
         result["existing_issues"] = []
 
-    # Check daily rate limit using config
-    daily_limit = config.limits.daily.triage
+    # Check daily rate limit using config based on command type
+    command = state.get("command", "run")
+    match command:
+        case "triage":
+            daily_limit = config.limits.daily.triage
+        case "analyze":
+            daily_limit = config.limits.daily.analyze
+        case "fix":
+            daily_limit = config.limits.daily.fix
+        case _:  # "run" uses the most restrictive (fix) limit
+            daily_limit = config.limits.daily.fix
+
     try:
         run_count = get_daily_run_count(repo, "beneissue-workflow.yml")
         result["daily_run_count"] = run_count
@@ -39,7 +49,7 @@ def intake_node(state: IssueState) -> dict:
         if result["daily_limit_exceeded"]:
             log_node_event(
                 "intake",
-                f"Daily limit exceeded: {run_count}/{daily_limit}",
+                f"Daily limit exceeded for {command}: {run_count}/{daily_limit}",
                 "warning",
             )
     except Exception:

@@ -3,6 +3,13 @@
 from beneissue.graph.state import IssueState
 
 
+def route_after_intake(state: IssueState) -> str:
+    """Route after intake node - check daily limit before proceeding."""
+    if state.get("daily_limit_exceeded"):
+        return "limit_exceeded"
+    return "continue"
+
+
 def route_after_triage(state: IssueState) -> str:
     """Route after triage node based on decision."""
     match state.get("triage_decision"):

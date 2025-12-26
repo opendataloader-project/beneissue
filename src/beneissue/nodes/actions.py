@@ -7,6 +7,34 @@ from beneissue.observability import get_node_logger
 logger = get_node_logger("actions")
 
 
+def limit_exceeded_node(state: IssueState) -> dict:
+    """Handle daily limit exceeded - post comment and skip processing."""
+    daily_run_count = state.get("daily_run_count", 0)
+
+    # No-action mode: skip GitHub operations
+    if state.get("no_action"):
+        logger.info(
+            "[DRY-RUN] Would post limit exceeded comment (count=%d)",
+            daily_run_count,
+        )
+        return {}
+
+    gh = get_github_client()
+    repo = gh.get_repo(state["repo"])
+    issue = repo.get_issue(state["issue_number"])
+
+    comment = (
+        f"⚠️ **Daily limit exceeded**\n\n"
+        f"This issue cannot be processed at this time. "
+        f"The daily automation limit has been reached ({daily_run_count} runs today).\n\n"
+        f"Please try again tomorrow or process this issue manually.\n\n"
+        f"---\n🤖 *beneissue automation*"
+    )
+    issue.create_comment(comment)
+
+    return {}
+
+
 def apply_labels_node(state: IssueState) -> dict:
     """Apply labels and assignee to the issue on GitHub."""
     # No-action mode: skip GitHub operations

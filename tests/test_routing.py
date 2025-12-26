@@ -5,9 +5,26 @@ import pytest
 from beneissue.graph.routing import (
     route_after_analyze,
     route_after_fix,
+    route_after_intake,
     route_after_triage,
     route_after_triage_test,
 )
+
+
+class TestRouteAfterIntake:
+    """Tests for route_after_intake function (daily limit check)."""
+
+    def test_limit_exceeded_goes_to_limit_exceeded(self):
+        state = {"daily_limit_exceeded": True}
+        assert route_after_intake(state) == "limit_exceeded"
+
+    def test_limit_not_exceeded_continues(self):
+        state = {"daily_limit_exceeded": False}
+        assert route_after_intake(state) == "continue"
+
+    def test_missing_limit_flag_continues(self):
+        state = {}
+        assert route_after_intake(state) == "continue"
 
 
 class TestRouteAfterTriage:

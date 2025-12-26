@@ -42,10 +42,16 @@ def triage(
         {
             "repo": repo,
             "issue_number": issue,
+            "command": "triage",
             "dry_run": dry_run,
             "no_action": no_action,
         }
     )
+
+    if result.get("daily_limit_exceeded"):
+        typer.echo(f"\nDaily limit exceeded ({result.get('daily_run_count', 0)} runs today).")
+        typer.echo("Skipping triage. Try again tomorrow.")
+        return
 
     typer.echo(f"\nDecision: {result['triage_decision']}")
     typer.echo(f"Reason: {result['triage_reason']}")
@@ -85,11 +91,17 @@ def analyze(
         {
             "repo": repo,
             "issue_number": issue,
+            "command": "analyze",
             "verbose": verbose,
             "dry_run": dry_run,
             "no_action": no_action,
         }
     )
+
+    if result.get("daily_limit_exceeded"):
+        typer.echo(f"\nDaily limit exceeded ({result.get('daily_run_count', 0)} runs today).")
+        typer.echo("Skipping analysis. Try again tomorrow.")
+        return
 
     typer.echo(f"\nSummary: {result['analysis_summary']}")
     typer.echo(f"Affected files: {result.get('affected_files', [])}")
@@ -127,10 +139,16 @@ def fix(
         {
             "repo": repo,
             "issue_number": issue,
+            "command": "fix",
             "dry_run": dry_run,
             "no_action": no_action,
         }
     )
+
+    if result.get("daily_limit_exceeded"):
+        typer.echo(f"\nDaily limit exceeded ({result.get('daily_run_count', 0)} runs today).")
+        typer.echo("Skipping fix. Try again tomorrow.")
+        return
 
     if result.get("fix_success") is not None:
         if result["fix_success"]:
@@ -172,10 +190,16 @@ def run(
         {
             "repo": repo,
             "issue_number": issue,
+            "command": "run",
             "dry_run": dry_run,
             "no_action": no_action,
         }
     )
+
+    if result.get("daily_limit_exceeded"):
+        typer.echo(f"\nDaily limit exceeded ({result.get('daily_run_count', 0)} runs today).")
+        typer.echo("Skipping workflow. Try again tomorrow.")
+        return
 
     typer.echo("\n--- Triage ---")
     typer.echo(f"Decision: {result['triage_decision']}")

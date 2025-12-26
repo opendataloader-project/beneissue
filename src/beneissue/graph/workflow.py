@@ -11,11 +11,16 @@ from langgraph.types import CachePolicy
 from beneissue.graph.routing import (
     route_after_analyze,
     route_after_fix,
+    route_after_intake,
     route_after_triage,
     route_after_triage_test,
 )
 from beneissue.graph.state import IssueState
-from beneissue.nodes.actions import apply_labels_node, post_comment_node
+from beneissue.nodes.actions import (
+    apply_labels_node,
+    limit_exceeded_node,
+    post_comment_node,
+)
 from beneissue.nodes.analyze import analyze_node
 from beneissue.nodes.fix import fix_node
 from beneissue.nodes.intake import intake_node
@@ -33,6 +38,7 @@ def _build_triage_graph(*, enable_cache: bool = False) -> StateGraph:
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
+    workflow.add_node("limit_exceeded", limit_exceeded_node)
     workflow.add_node(
         "triage",
         triage_node,
@@ -41,7 +47,18 @@ def _build_triage_graph(*, enable_cache: bool = False) -> StateGraph:
     workflow.add_node("apply_labels", apply_labels_node)
 
     workflow.set_entry_point("intake")
-    workflow.add_edge("intake", "triage")
+
+    # Check daily limit after intake
+    workflow.add_conditional_edges(
+        "intake",
+        route_after_intake,
+        {
+            "limit_exceeded": "limit_exceeded",
+            "continue": "triage",
+        },
+    )
+
+    workflow.add_edge("limit_exceeded", END)
     workflow.add_edge("triage", "apply_labels")
     workflow.add_edge("apply_labels", END)
 
@@ -69,6 +86,7 @@ def _build_analyze_graph(*, enable_cache: bool = False) -> StateGraph:
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
+    workflow.add_node("limit_exceeded", limit_exceeded_node)
     workflow.add_node(
         "analyze",
         analyze_node,
@@ -78,7 +96,18 @@ def _build_analyze_graph(*, enable_cache: bool = False) -> StateGraph:
     workflow.add_node("post_comment", post_comment_node)
 
     workflow.set_entry_point("intake")
-    workflow.add_edge("intake", "analyze")
+
+    # Check daily limit after intake
+    workflow.add_conditional_edges(
+        "intake",
+        route_after_intake,
+        {
+            "limit_exceeded": "limit_exceeded",
+            "continue": "analyze",
+        },
+    )
+
+    workflow.add_edge("limit_exceeded", END)
 
     # Always post comment after analyze
     workflow.add_edge("analyze", "post_comment")
@@ -109,12 +138,24 @@ def _build_fix_graph() -> StateGraph:
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
+    workflow.add_node("limit_exceeded", limit_exceeded_node)
     workflow.add_node("fix", fix_node)
     workflow.add_node("apply_labels", apply_labels_node)
     workflow.add_node("post_comment", post_comment_node)
 
     workflow.set_entry_point("intake")
-    workflow.add_edge("intake", "fix")
+
+    # Check daily limit after intake
+    workflow.add_conditional_edges(
+        "intake",
+        route_after_intake,
+        {
+            "limit_exceeded": "limit_exceeded",
+            "continue": "fix",
+        },
+    )
+
+    workflow.add_edge("limit_exceeded", END)
 
     workflow.add_conditional_edges(
         "fix",
@@ -148,6 +189,7 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
 
     # Add all nodes (with optional caching for expensive LLM nodes)
     workflow.add_node("intake", intake_node)
+    workflow.add_node("limit_exceeded", limit_exceeded_node)
     workflow.add_node(
         "triage",
         triage_node,
@@ -164,7 +206,18 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
 
     # Define edges
     workflow.set_entry_point("intake")
-    workflow.add_edge("intake", "triage")
+
+    # Check daily limit after intake
+    workflow.add_conditional_edges(
+        "intake",
+        route_after_intake,
+        {
+            "limit_exceeded": "limit_exceeded",
+            "continue": "triage",
+        },
+    )
+
+    workflow.add_edge("limit_exceeded", END)
 
     # Conditional routing after triage
     workflow.add_conditional_edges(
