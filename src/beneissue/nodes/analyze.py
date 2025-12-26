@@ -3,10 +3,10 @@
 import os
 import tempfile
 
-from langsmith import get_current_run_tree, traceable
+from langsmith import traceable
 
 from beneissue.graph.state import IssueState
-from beneissue.integrations.claude_code import ClaudeCodeResult, run_claude_code
+from beneissue.integrations.claude_code import ClaudeCodeResult, UsageInfo, run_claude_code
 from beneissue.integrations.github import clone_repo
 from beneissue.nodes.schemas import AnalyzeResult
 from beneissue.nodes.utils import extract_repo_owner, parse_result
@@ -36,25 +36,26 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
     return parse_result(output, AnalyzeResult, required_key="summary")
 
 
-def _track_usage_to_langsmith(result: ClaudeCodeResult) -> None:
-    """Track Claude Code usage to LangSmith."""
-    try:
-        run_tree = get_current_run_tree()
-        if run_tree and result.usage:
-            run_tree.add_metadata({"claude_code_usage": result.usage.to_dict()})
-            logger.info(
-                "Usage tracked: tokens=%d, cost=$%.4f",
-                result.usage.total_tokens,
-                result.usage.total_cost_usd,
-            )
-    except Exception as e:
-        logger.warning("Failed to track usage to LangSmith: %s", e)
+def _build_usage_metadata(usage: UsageInfo) -> dict:
+    """Build usage_metadata dict for LangSmith."""
+    return {
+        "input_tokens": usage.input_tokens,
+        "output_tokens": usage.output_tokens,
+        "total_tokens": usage.total_tokens,
+        "total_cost": usage.total_cost_usd,
+        "ls_provider": "anthropic",
+        "ls_model_name": "claude-sonnet-4-20250514",
+    }
 
 
 def _run_analysis(
     repo_path: str, prompt: str, *, verbose: bool = False, repo_owner: str | None = None
-) -> dict:
-    """Run Claude Code analysis on a repository path."""
+) -> tuple[dict, UsageInfo]:
+    """Run Claude Code analysis on a repository path.
+
+    Returns:
+        Tuple of (result_dict, usage_info)
+    """
     logger.info("Running Claude Code to analyze issue...")
 
     result = run_claude_code(
@@ -65,20 +66,24 @@ def _run_analysis(
         verbose=verbose,
     )
 
-    # Track usage to LangSmith
-    _track_usage_to_langsmith(result)
+    usage = result.usage
+    logger.info(
+        "Claude Code usage: tokens=%d, cost=$%.4f",
+        usage.total_tokens,
+        usage.total_cost_usd,
+    )
 
     if result.stdout:
         logger.debug("Claude Code Output:\n%s", result.stdout)
 
     if result.error:
         logger.error("Analysis error: %s", result.error)
-        return _fallback_analyze(result.error, repo_owner=repo_owner)
+        return _fallback_analyze(result.error, repo_owner=repo_owner), usage
 
     if not result.success:
         error_msg = result.stderr[:200] if result.stderr else "Unknown error"
         logger.error("Analysis failed: %s", error_msg)
-        return _fallback_analyze(error_msg, repo_owner=repo_owner)
+        return _fallback_analyze(error_msg, repo_owner=repo_owner), usage
 
     response = _parse_analyze_response(result.stdout)
 
@@ -88,15 +93,15 @@ def _run_analysis(
             response.fix_decision,
             response.priority,
         )
-        return _build_result(response, repo_owner=repo_owner)
+        return _build_result(response, repo_owner=repo_owner), usage
 
     logger.error("Failed to parse analysis output: %s", result.stdout[:200])
     return _fallback_analyze(
         f"Failed to parse analysis output: {result.stdout[:200]}", repo_owner=repo_owner
-    )
+    ), usage
 
 
-@traceable(name="claude_code_analyze", run_type="chain")
+@traceable(name="claude_code_analyze", run_type="llm")
 def analyze_node(state: IssueState) -> dict:
     """Analyze an issue using Claude Code CLI."""
     prompt = _build_analyze_prompt(state)
@@ -110,19 +115,23 @@ def analyze_node(state: IssueState) -> dict:
     # Use project_root if provided (for testing), otherwise clone
     if state.get("project_root"):
         logger.info("Using local project root: %s", state["project_root"])
-        return _run_analysis(
+        result, usage = _run_analysis(
             str(state["project_root"]), prompt, verbose=verbose, repo_owner=repo_owner
         )
+    else:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_path = os.path.join(temp_dir, "repo")
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        repo_path = os.path.join(temp_dir, "repo")
+            logger.info("Cloning repository %s...", repo)
+            if not clone_repo(state["repo"], repo_path):
+                logger.error("Failed to clone repository")
+                return _fallback_analyze("Failed to clone repository", repo_owner=repo_owner)
 
-        logger.info("Cloning repository %s...", repo)
-        if not clone_repo(state["repo"], repo_path):
-            logger.error("Failed to clone repository")
-            return _fallback_analyze("Failed to clone repository", repo_owner=repo_owner)
+            result, usage = _run_analysis(repo_path, prompt, verbose=verbose, repo_owner=repo_owner)
 
-        return _run_analysis(repo_path, prompt, verbose=verbose, repo_owner=repo_owner)
+    # Add usage_metadata to output for LangSmith token tracking
+    result["usage_metadata"] = _build_usage_metadata(usage)
+    return result
 
 
 def _build_result(response: AnalyzeResult, repo_owner: str | None = None) -> dict:

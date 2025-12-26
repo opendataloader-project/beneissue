@@ -4,10 +4,10 @@ import os
 import secrets
 import tempfile
 
-from langsmith import get_current_run_tree, traceable
+from langsmith import traceable
 
 from beneissue.graph.state import IssueState
-from beneissue.integrations.claude_code import ClaudeCodeResult, run_claude_code
+from beneissue.integrations.claude_code import UsageInfo, run_claude_code
 from beneissue.integrations.git import (
     configure_git_user,
     git_add_all,
@@ -115,26 +115,25 @@ def _error_result(error: str, label: str = "fix/manual-required") -> dict:
     }
 
 
-def _track_usage_to_langsmith(result: ClaudeCodeResult) -> None:
-    """Track Claude Code usage to LangSmith."""
-    try:
-        run_tree = get_current_run_tree()
-        if run_tree and result.usage:
-            run_tree.add_metadata({"claude_code_usage": result.usage.to_dict()})
-            logger.info(
-                "Usage tracked: tokens=%d, cost=$%.4f",
-                result.usage.total_tokens,
-                result.usage.total_cost_usd,
-            )
-    except Exception as e:
-        logger.warning("Failed to track usage to LangSmith: %s", e)
+def _build_usage_metadata(usage: UsageInfo) -> dict:
+    """Build usage_metadata dict for LangSmith."""
+    return {
+        "input_tokens": usage.input_tokens,
+        "output_tokens": usage.output_tokens,
+        "total_tokens": usage.total_tokens,
+        "total_cost": usage.total_cost_usd,
+        "ls_provider": "anthropic",
+        "ls_model_name": "claude-sonnet-4-20250514",
+    }
 
 
-def _run_claude_code_fix(repo_path: str, prompt: str) -> tuple[FixResult | None, dict | None]:
+def _run_claude_code_fix(
+    repo_path: str, prompt: str
+) -> tuple[FixResult | None, dict | None, UsageInfo]:
     """Run Claude Code and return parsed result or error dict.
 
     Returns:
-        Tuple of (fix_result, error_dict). One will be None.
+        Tuple of (fix_result, error_dict, usage). fix_result or error_dict will be None.
     """
     result = run_claude_code(
         prompt=prompt,
@@ -144,21 +143,25 @@ def _run_claude_code_fix(repo_path: str, prompt: str) -> tuple[FixResult | None,
         verbose=True,
     )
 
-    # Track usage to LangSmith
-    _track_usage_to_langsmith(result)
+    usage = result.usage
+    logger.info(
+        "Claude Code usage: tokens=%d, cost=$%.4f",
+        usage.total_tokens,
+        usage.total_cost_usd,
+    )
 
     if result.stdout:
         logger.debug("Claude Code Output:\n%s", result.stdout)
 
     if result.error:
         logger.error("Claude Code error: %s", result.error)
-        return None, _error_result(result.error)
+        return None, _error_result(result.error), usage
 
     if not result.success:
         logger.error("Claude Code failed with return code %s", result.returncode)
         if result.stderr:
             logger.error("stderr: %s", result.stderr[:500])
-        return None, _error_result(result.stderr[:500] if result.stderr else "Unknown error")
+        return None, _error_result(result.stderr[:500] if result.stderr else "Unknown error"), usage
 
     fix_result = _parse_fix_output(result.stdout)
     if fix_result:
@@ -168,9 +171,9 @@ def _run_claude_code_fix(repo_path: str, prompt: str) -> tuple[FixResult | None,
 
     if fix_result and not fix_result.success:
         logger.error("Fix reported failure: %s", fix_result.error)
-        return None, _error_result(fix_result.error or "Fix reported failure")
+        return None, _error_result(fix_result.error or "Fix reported failure"), usage
 
-    return fix_result, None
+    return fix_result, None, usage
 
 
 def _commit_and_push(
@@ -207,7 +210,7 @@ def _commit_and_push(
     return branch_name, None
 
 
-@traceable(name="claude_code_fix", run_type="chain")
+@traceable(name="claude_code_fix", run_type="llm")
 def fix_node(state: IssueState) -> dict:
     """Execute fix using Claude Code CLI."""
     prompt = _build_fix_prompt(state)
@@ -224,19 +227,27 @@ def fix_node(state: IssueState) -> dict:
             return _error_result("Failed to clone repository", "fix/failed")
 
         logger.info("Running Claude Code to analyze and fix...")
-        fix_result, error = _run_claude_code_fix(repo_path, prompt)
+        fix_result, error, usage = _run_claude_code_fix(repo_path, prompt)
+
+        # Build usage_metadata for LangSmith
+        usage_metadata = _build_usage_metadata(usage)
+
         if error:
+            error["usage_metadata"] = usage_metadata
             return error
 
         changes = git_status(repo_path)
         if not changes:
             logger.warning("No changes were made by Claude Code")
-            return _error_result("No changes were made")
+            result = _error_result("No changes were made")
+            result["usage_metadata"] = usage_metadata
+            return result
 
         logger.debug("Changes detected:\n%s", changes)
 
         branch_name, error = _commit_and_push(repo_path, issue_number, fix_result)
         if error:
+            error["usage_metadata"] = usage_metadata
             return error
 
         logger.info("Creating pull request...")
@@ -249,7 +260,10 @@ def fix_node(state: IssueState) -> dict:
                 "pr_url": pr_url,
                 "labels_to_remove": ["fix/auto-eligible"],
                 "labels_to_add": ["fix/completed"],
+                "usage_metadata": usage_metadata,
             }
 
+        result = _error_result(pr_error or "Failed to create PR")
+        result["usage_metadata"] = usage_metadata
         logger.error("Failed to create PR: %s", pr_error)
-        return _error_result(pr_error or "Failed to create PR")
+        return result
