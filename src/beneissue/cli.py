@@ -395,12 +395,18 @@ def init(
             text=True,
         )
         if result.returncode == 0:
+            commit_message = (
+                "chore: add AI-powered GitHub issue automation workflow\n\n"
+                "Set up beneissue for automated issue triage, analysis, and fixes.\n"
+                "- GitHub Actions workflow for issue event handling\n"
+                "- Configuration and test cases in .claude/skills/beneissue/"
+            )
             result = subprocess.run(
                 [
                     "git",
                     "commit",
                     "-m",
-                    "Add beneissue automation",
+                    commit_message,
                     "--author",
                     "beneissue[bot] <beneissue[bot]@users.noreply.github.com>",
                 ],
@@ -408,7 +414,7 @@ def init(
                 text=True,
             )
             if result.returncode == 0:
-                typer.echo("Committed: Add beneissue automation")
+                typer.echo("Committed: Add AI-powered GitHub issue automation workflow")
             elif "nothing to commit" in result.stdout + result.stderr:
                 typer.echo("No changes to commit.")
             else:
