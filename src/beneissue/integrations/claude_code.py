@@ -52,6 +52,19 @@ class UsageInfo:
             "ls_model_name": self.model,
         }
 
+    def log_summary(self, logger) -> None:
+        """Log usage summary."""
+        logger.info(
+            "Claude Code usage: tokens=%d, cost=$%.4f",
+            self.total_tokens,
+            self.total_cost_usd,
+        )
+
+    def with_metadata(self, result: dict) -> dict:
+        """Add usage_metadata to a result dict and return it."""
+        result["usage_metadata"] = self.to_langsmith_metadata()
+        return result
+
 
 @dataclass
 class ClaudeCodeResult:

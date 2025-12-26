@@ -3,10 +3,13 @@
 import os
 import re
 import subprocess
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
 
 from github import Github
+
+# Cached GitHub client instance
+_github_client: Github | None = None
 
 
 def clone_repo(repo: str, target_dir: str) -> bool:
@@ -34,11 +37,20 @@ def clone_repo(repo: str, target_dir: str) -> bool:
 
 
 def get_github_client() -> Github:
-    """Get authenticated GitHub client."""
-    token = os.environ.get("GITHUB_TOKEN")
-    if not token:
-        raise ValueError("GITHUB_TOKEN environment variable is required")
-    return Github(token)
+    """Get authenticated GitHub client (cached singleton)."""
+    global _github_client
+    if _github_client is None:
+        token = os.environ.get("GITHUB_TOKEN")
+        if not token:
+            raise ValueError("GITHUB_TOKEN environment variable is required")
+        _github_client = Github(token)
+    return _github_client
+
+
+def reset_github_client() -> None:
+    """Reset the cached GitHub client (for testing)."""
+    global _github_client
+    _github_client = None
 
 
 def get_issue(repo: str, issue_number: int) -> dict:
@@ -58,7 +70,7 @@ def get_issue(repo: str, issue_number: int) -> dict:
 def get_existing_issues(
     repo: str,
     limit: int = 50,
-    exclude_issue: Optional[int] = None,
+    exclude_issue: int | None = None,
 ) -> list[dict]:
     """Fetch existing issues for duplicate detection.
 
@@ -191,18 +203,13 @@ def close_issue(repo: str, issue_number: int, reason: str = "not_planned") -> No
     issue.edit(state="closed", state_reason=reason)
 
 
+@dataclass
 class PullRequestResult:
     """Result of creating a pull request."""
 
-    def __init__(
-        self,
-        success: bool,
-        url: str | None = None,
-        error: str | None = None,
-    ):
-        self.success = success
-        self.url = url
-        self.error = error
+    success: bool
+    url: str | None = None
+    error: str | None = None
 
 
 # Marker for beneissue analysis comments (invisible in rendered markdown)
@@ -259,7 +266,7 @@ def get_analysis_comment(repo: str, issue_number: int) -> dict | None:
         )
         if files_match:
             files_text = files_match.group(1)
-            result["affected_files"] = re.findall(r"- `(.+?)`", files_text)
+            result["affected_files"] = re.findall(r"- `([^`]+)`", files_text)
 
         if result:
             return result

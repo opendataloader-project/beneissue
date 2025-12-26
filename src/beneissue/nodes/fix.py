@@ -132,11 +132,7 @@ def _run_claude_code_fix(
     )
 
     usage = result.usage
-    logger.info(
-        "Claude Code usage: tokens=%d, cost=$%.4f",
-        usage.total_tokens,
-        usage.total_cost_usd,
-    )
+    usage.log_summary(logger)
 
     if result.stdout:
         logger.debug("Claude Code Output:\n%s", result.stdout)
@@ -217,41 +213,31 @@ def fix_node(state: IssueState) -> dict:
         logger.info("Running Claude Code to analyze and fix...")
         fix_result, error, usage = _run_claude_code_fix(repo_path, prompt)
 
-        # Build usage_metadata for LangSmith
-        usage_metadata = usage.to_langsmith_metadata()
-
         if error:
-            error["usage_metadata"] = usage_metadata
-            return error
+            return usage.with_metadata(error)
 
         changes = git_status(repo_path)
         if not changes:
             logger.warning("No changes were made by Claude Code")
-            result = _error_result("No changes were made")
-            result["usage_metadata"] = usage_metadata
-            return result
+            return usage.with_metadata(_error_result("No changes were made"))
 
         logger.debug("Changes detected:\n%s", changes)
 
         branch_name, error = _commit_and_push(repo_path, issue_number, fix_result)
         if error:
-            error["usage_metadata"] = usage_metadata
-            return error
+            return usage.with_metadata(error)
 
         logger.info("Creating pull request...")
         pr_success, pr_url, pr_error = _create_pr(state, fix_result, branch_name)
 
         if pr_success and pr_url:
             logger.info("PR created: %s", pr_url)
-            return {
+            return usage.with_metadata({
                 "fix_success": True,
                 "pr_url": pr_url,
                 "labels_to_remove": ["fix/auto-eligible"],
                 "labels_to_add": ["fix/completed"],
-                "usage_metadata": usage_metadata,
-            }
+            })
 
-        result = _error_result(pr_error or "Failed to create PR")
-        result["usage_metadata"] = usage_metadata
         logger.error("Failed to create PR: %s", pr_error)
-        return result
+        return usage.with_metadata(_error_result(pr_error or "Failed to create PR"))

@@ -55,11 +55,7 @@ def _run_analysis(
     )
 
     usage = result.usage
-    logger.info(
-        "Claude Code usage: tokens=%d, cost=$%.4f",
-        usage.total_tokens,
-        usage.total_cost_usd,
-    )
+    usage.log_summary(logger)
 
     if result.stdout:
         logger.debug("Claude Code Output:\n%s", result.stdout)
