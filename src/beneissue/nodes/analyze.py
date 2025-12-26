@@ -6,7 +6,7 @@ import tempfile
 from langsmith import traceable
 
 from beneissue.graph.state import IssueState
-from beneissue.integrations.claude_code import ClaudeCodeResult, UsageInfo, run_claude_code
+from beneissue.integrations.claude_code import UsageInfo, run_claude_code
 from beneissue.integrations.github import clone_repo
 from beneissue.nodes.schemas import AnalyzeResult
 from beneissue.nodes.utils import extract_repo_owner, parse_result
@@ -34,18 +34,6 @@ def _build_analyze_prompt(state: IssueState) -> str:
 def _parse_analyze_response(output: str) -> AnalyzeResult | None:
     """Parse Claude Code output to extract AnalyzeResult."""
     return parse_result(output, AnalyzeResult, required_key="summary")
-
-
-def _build_usage_metadata(usage: UsageInfo) -> dict:
-    """Build usage_metadata dict for LangSmith."""
-    return {
-        "input_tokens": usage.input_tokens,
-        "output_tokens": usage.output_tokens,
-        "total_tokens": usage.total_tokens,
-        "total_cost": usage.total_cost_usd,
-        "ls_provider": "anthropic",
-        "ls_model_name": "claude-sonnet-4-20250514",
-    }
 
 
 def _run_analysis(
@@ -125,12 +113,14 @@ def analyze_node(state: IssueState) -> dict:
             logger.info("Cloning repository %s...", repo)
             if not clone_repo(state["repo"], repo_path):
                 logger.error("Failed to clone repository")
-                return _fallback_analyze("Failed to clone repository", repo_owner=repo_owner)
+                fallback = _fallback_analyze("Failed to clone repository", repo_owner=repo_owner)
+                fallback["usage_metadata"] = UsageInfo().to_langsmith_metadata()
+                return fallback
 
             result, usage = _run_analysis(repo_path, prompt, verbose=verbose, repo_owner=repo_owner)
 
     # Add usage_metadata to output for LangSmith token tracking
-    result["usage_metadata"] = _build_usage_metadata(usage)
+    result["usage_metadata"] = usage.to_langsmith_metadata()
     return result
 
 

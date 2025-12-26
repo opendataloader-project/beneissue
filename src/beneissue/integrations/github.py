@@ -1,6 +1,7 @@
 """GitHub API integration."""
 
 import os
+import re
 import subprocess
 from datetime import datetime, timezone
 from typing import Optional
@@ -236,8 +237,6 @@ def get_analysis_comment(repo: str, issue_number: int) -> dict | None:
         result: dict = {}
 
         # Extract summary (text after "## 🤖 Analysis" until next section or ---)
-        import re
-
         summary_match = re.search(
             r"## 🤖 Analysis\n(.+?)(?=\n\n\*\*|\n---|\Z)", body, re.DOTALL
         )

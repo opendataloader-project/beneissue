@@ -10,6 +10,7 @@ import yaml
 
 # Default values
 DEFAULT_TRIAGE_MODEL = "claude-haiku-4-5"
+DEFAULT_CLAUDE_CODE_MODEL = "claude-sonnet-4.5"
 DEFAULT_SCORE_THRESHOLD = 80
 
 # Daily limits (cost control)

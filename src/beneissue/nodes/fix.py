@@ -115,18 +115,6 @@ def _error_result(error: str, label: str = "fix/manual-required") -> dict:
     }
 
 
-def _build_usage_metadata(usage: UsageInfo) -> dict:
-    """Build usage_metadata dict for LangSmith."""
-    return {
-        "input_tokens": usage.input_tokens,
-        "output_tokens": usage.output_tokens,
-        "total_tokens": usage.total_tokens,
-        "total_cost": usage.total_cost_usd,
-        "ls_provider": "anthropic",
-        "ls_model_name": "claude-sonnet-4-20250514",
-    }
-
-
 def _run_claude_code_fix(
     repo_path: str, prompt: str
 ) -> tuple[FixResult | None, dict | None, UsageInfo]:
@@ -230,7 +218,7 @@ def fix_node(state: IssueState) -> dict:
         fix_result, error, usage = _run_claude_code_fix(repo_path, prompt)
 
         # Build usage_metadata for LangSmith
-        usage_metadata = _build_usage_metadata(usage)
+        usage_metadata = usage.to_langsmith_metadata()
 
         if error:
             error["usage_metadata"] = usage_metadata

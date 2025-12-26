@@ -11,6 +11,8 @@ from claude_agent_sdk import (
     query,
 )
 
+from beneissue.config import DEFAULT_CLAUDE_CODE_MODEL
+
 
 @dataclass
 class UsageInfo:
@@ -21,13 +23,14 @@ class UsageInfo:
     cache_creation_tokens: int = 0
     cache_read_tokens: int = 0
     total_cost_usd: float = 0.0
+    model: str = ""
 
     @property
     def total_tokens(self) -> int:
         return self.input_tokens + self.output_tokens
 
     def to_dict(self) -> dict:
-        """Convert to dictionary for LangSmith usage_metadata."""
+        """Convert to dictionary for internal use."""
         return {
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
@@ -35,7 +38,18 @@ class UsageInfo:
             "cache_read_tokens": self.cache_read_tokens,
             "total_tokens": self.total_tokens,
             "total_cost": self.total_cost_usd,
-            "ls_provider": "claude-code",
+            "model": self.model,
+        }
+
+    def to_langsmith_metadata(self) -> dict:
+        """Convert to LangSmith usage_metadata format for token tracking."""
+        return {
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "total_tokens": self.total_tokens,
+            "total_cost": self.total_cost_usd,
+            "ls_provider": "anthropic",
+            "ls_model_name": self.model,
         }
 
 
@@ -65,6 +79,7 @@ async def run_claude_code_async(
     allowed_tools: list[str] | None = None,
     timeout: int = DEFAULT_TIMEOUT,
     verbose: bool = False,
+    model: str | None = None,
 ) -> ClaudeCodeResult:
     """Run Claude Code SDK with a prompt asynchronously.
 
@@ -74,6 +89,7 @@ async def run_claude_code_async(
         allowed_tools: List of allowed tools (e.g., ["Read", "Glob", "Grep"])
         timeout: Command timeout in seconds
         verbose: Enable verbose output (currently unused with SDK)
+        model: Model to use (e.g., "claude-sonnet-4.5"). Defaults to DEFAULT_CLAUDE_CODE_MODEL.
 
     Returns:
         ClaudeCodeResult with output, status, and usage info
@@ -81,11 +97,15 @@ async def run_claude_code_async(
     if allowed_tools is None:
         allowed_tools = ["Read", "Glob", "Grep"]
 
+    if model is None:
+        model = DEFAULT_CLAUDE_CODE_MODEL
+
     options = ClaudeAgentOptions(
         allowed_tools=allowed_tools,
         cwd=cwd,
         permission_mode="bypassPermissions",
         max_turns=50,
+        model=model,
     )
 
     collected_output: list[str] = []
@@ -111,6 +131,7 @@ async def run_claude_code_async(
                         usage_info.cache_read_tokens = message.usage.get(
                             "cache_read_input_tokens", 0
                         )
+                        usage_info.model = model
 
         stdout = "\n".join(collected_output)
         return ClaudeCodeResult(
@@ -150,6 +171,7 @@ def run_claude_code(
     allowed_tools: list[str] | None = None,
     timeout: int = DEFAULT_TIMEOUT,
     verbose: bool = False,
+    model: str | None = None,
 ) -> ClaudeCodeResult:
     """Run Claude Code SDK with a prompt (sync wrapper).
 
@@ -157,6 +179,7 @@ def run_claude_code(
         prompt: The prompt to send to Claude Code
         cwd: Working directory (repository path)
         allowed_tools: List of allowed tools (e.g., ["Read", "Glob", "Grep"])
+        model: Model to use (e.g., "claude-sonnet-4.5"). Defaults to DEFAULT_CLAUDE_CODE_MODEL.
         timeout: Command timeout in seconds
         verbose: Enable verbose output
 
@@ -170,6 +193,7 @@ def run_claude_code(
             allowed_tools=allowed_tools,
             timeout=timeout,
             verbose=verbose,
+            model=model,
         )
     )
 
