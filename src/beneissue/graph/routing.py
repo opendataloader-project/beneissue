@@ -31,3 +31,14 @@ def route_after_fix(state: IssueState) -> str:
         return "apply_labels"
     else:
         return "post_comment"
+
+
+def route_after_triage_test(state: IssueState) -> str:
+    """Route after triage for test workflow (no apply_labels).
+
+    Routes to analyze if valid, otherwise ends the workflow.
+    Used by test_full_graph for LangSmith Studio testing.
+    """
+    if state.get("triage_decision") == "valid":
+        return "analyze"
+    return "__end__"

@@ -1,6 +1,7 @@
 {
   "dependencies": ["."],
   "graphs": {
+    "test_full": "./src/beneissue/graph/workflow.py:test_full_graph",
     "triage": "./src/beneissue/graph/workflow.py:triage_graph",
     "analyze": "./src/beneissue/graph/workflow.py:analyze_graph",
     "fix": "./src/beneissue/graph/workflow.py:fix_graph",

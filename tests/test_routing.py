@@ -6,6 +6,7 @@ from beneissue.graph.routing import (
     route_after_analyze,
     route_after_fix,
     route_after_triage,
+    route_after_triage_test,
 )
 
 
@@ -75,3 +76,27 @@ class TestRouteAfterFix:
     def test_missing_goes_to_post_comment(self):
         state = {}
         assert route_after_fix(state) == "post_comment"
+
+
+class TestRouteAfterTriageTest:
+    """Tests for route_after_triage_test function (test workflow)."""
+
+    def test_valid_goes_to_analyze(self):
+        state = {"triage_decision": "valid"}
+        assert route_after_triage_test(state) == "analyze"
+
+    def test_invalid_goes_to_end(self):
+        state = {"triage_decision": "invalid"}
+        assert route_after_triage_test(state) == "__end__"
+
+    def test_duplicate_goes_to_end(self):
+        state = {"triage_decision": "duplicate"}
+        assert route_after_triage_test(state) == "__end__"
+
+    def test_needs_info_goes_to_end(self):
+        state = {"triage_decision": "needs_info"}
+        assert route_after_triage_test(state) == "__end__"
+
+    def test_missing_decision_goes_to_end(self):
+        state = {}
+        assert route_after_triage_test(state) == "__end__"

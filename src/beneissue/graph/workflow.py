@@ -12,12 +12,14 @@ from beneissue.graph.routing import (
     route_after_analyze,
     route_after_fix,
     route_after_triage,
+    route_after_triage_test,
 )
 from beneissue.graph.state import IssueState
 from beneissue.nodes.actions import apply_labels_node, post_comment_node
 from beneissue.nodes.analyze import analyze_node
 from beneissue.nodes.fix import fix_node
 from beneissue.nodes.intake import intake_node
+from beneissue.nodes.load_preset import load_preset_node
 from beneissue.nodes.triage import triage_node
 
 # Cache policies for expensive LLM nodes
@@ -224,11 +226,74 @@ def create_full_workflow(
     return graph.compile(checkpointer=checkpointer, cache=cache)
 
 
+def _build_test_full_graph(*, enable_cache: bool = False) -> StateGraph:
+    """Build test graph: load_preset → triage → analyze → END.
+
+    This graph is designed for LangSmith Studio testing without GitHub dependencies.
+    Uses configurable preset_name to load test cases from JSON files.
+    """
+    workflow = StateGraph(IssueState)
+
+    # Add nodes
+    workflow.add_node("load_preset", load_preset_node)
+    workflow.add_node(
+        "triage",
+        triage_node,
+        cache_policy=TRIAGE_CACHE_POLICY if enable_cache else None,
+    )
+    workflow.add_node(
+        "analyze",
+        analyze_node,
+        cache_policy=ANALYZE_CACHE_POLICY if enable_cache else None,
+    )
+
+    # Define edges
+    workflow.set_entry_point("load_preset")
+    workflow.add_edge("load_preset", "triage")
+
+    # Conditional routing: valid → analyze, else → END
+    workflow.add_conditional_edges(
+        "triage",
+        route_after_triage_test,
+        {
+            "analyze": "analyze",
+            END: END,
+        },
+    )
+
+    workflow.add_edge("analyze", END)
+
+    return workflow
+
+
+def create_test_full_workflow(
+    checkpointer: Optional[BaseCheckpointSaver] = None,
+    *,
+    enable_cache: bool = False,
+) -> StateGraph:
+    """Create test workflow for LangSmith Studio.
+
+    Args:
+        checkpointer: Optional checkpoint saver for state persistence.
+        enable_cache: Enable node-level caching for triage/analyze (reduces API costs).
+
+    Usage in LangSmith Studio:
+        Set configurable preset_name to one of:
+        - analyze-auto-eligible-typo
+        - analyze-comment-only-question
+        - analyze-manual-overflow
+    """
+    graph = _build_test_full_graph(enable_cache=enable_cache)
+    cache = InMemoryCache() if enable_cache else None
+    return graph.compile(checkpointer=checkpointer, cache=cache)
+
+
 # Compiled workflow instances (without checkpointing for backward compatibility)
 triage_graph = create_triage_workflow()
 analyze_graph = create_analyze_workflow()
 fix_graph = create_fix_workflow()
 full_graph = create_full_workflow()
+test_full_graph = create_test_full_workflow()
 
 
 def get_thread_id(repo: str, issue_number: int) -> str:
