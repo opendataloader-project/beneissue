@@ -42,11 +42,33 @@ class UsageInfo:
         }
 
     def to_langsmith_metadata(self) -> dict:
-        """Convert to LangSmith usage_metadata format for token tracking."""
+        """Convert to LangSmith usage_metadata format for token tracking.
+
+        LangSmith expects input_cost/output_cost for proper cost attribution.
+        Without these, costs appear as "Other" in the dashboard.
+
+        Note: Claude Code SDK only provides total_cost, so we estimate the split
+        based on Anthropic's typical pricing ratio (~5:1 output:input for Sonnet).
+        """
+        # Estimate cost split since Claude Code SDK only gives total cost
+        # Anthropic Sonnet pricing: $3/M input, $15/M output (5:1 ratio)
+        # Formula: total = input_tokens * P_in + output_tokens * P_out
+        # With P_out = 5 * P_in: total = P_in * (input_tokens + 5 * output_tokens)
+        total_weighted = self.input_tokens + 5 * self.output_tokens
+        if total_weighted > 0 and self.total_cost_usd > 0:
+            cost_per_weighted = self.total_cost_usd / total_weighted
+            input_cost = self.input_tokens * cost_per_weighted
+            output_cost = self.output_tokens * 5 * cost_per_weighted
+        else:
+            input_cost = 0.0
+            output_cost = 0.0
+
         return {
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "total_tokens": self.total_tokens,
+            "input_cost": input_cost,
+            "output_cost": output_cost,
             "total_cost": self.total_cost_usd,
             "ls_provider": "anthropic",
             "ls_model_name": self.model,
