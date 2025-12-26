@@ -48,3 +48,7 @@ class IssueState(TypedDict, total=False):
     labels_to_add: list[str]
     labels_to_remove: list[str]
     comment_to_post: Optional[str]
+
+    # === Dry-run mode ===
+    dry_run: bool  # Skip LLM calls, use mock data
+    no_action: bool  # Skip GitHub actions (labels, comments)

@@ -8,6 +8,7 @@ from langsmith import traceable
 from beneissue.graph.state import IssueState
 from beneissue.integrations.claude_code import UsageInfo, run_claude_code
 from beneissue.integrations.github import clone_repo
+from beneissue.mocks import load_mock
 from beneissue.nodes.schemas import AnalyzeResult
 from beneissue.nodes.utils import extract_repo_owner, parse_result
 from beneissue.observability import get_node_logger
@@ -88,6 +89,25 @@ def _run_analysis(
 @traceable(name="claude_code_analyze", run_type="llm")
 def analyze_node(state: IssueState) -> dict:
     """Analyze an issue using Claude Code CLI."""
+    # Dry-run mode: return mock data
+    if state.get("dry_run"):
+        mock = load_mock("analyze", state.get("project_root"))
+        repo = state.get("repo", "")
+        repo_owner = extract_repo_owner(repo)
+        logger.info("[DRY-RUN] Returning mock analysis result")
+        return {
+            "analysis_summary": mock.get("summary", "[DRY-RUN] Mock analysis"),
+            "affected_files": mock.get("affected_files", []),
+            "fix_decision": mock.get("fix_decision", "comment_only"),
+            "fix_reason": mock.get("reason", "[DRY-RUN] Mock mode"),
+            "priority": mock.get("priority", "P2"),
+            "story_points": mock.get("story_points", 1),
+            "comment_draft": mock.get("comment_draft"),
+            "assignee": mock.get("assignee") or repo_owner,
+            "labels_to_add": [f"fix/{mock.get('fix_decision', 'comment-only').replace('_', '-')}"],
+            "usage_metadata": UsageInfo().to_langsmith_metadata(),
+        }
+
     prompt = _build_analyze_prompt(state)
     verbose = state.get("verbose", False)
 

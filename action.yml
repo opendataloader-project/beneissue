@@ -75,4 +75,14 @@ runs:
           VERBOSE_FLAG="--verbose"
         fi
 
-        beneissue $COMMAND ${{ github.repository }} --issue "$ISSUE_NUMBER" $VERBOSE_FLAG
+        DRY_RUN_FLAG=""
+        if [ "$BENEISSUE_DRY_RUN" = "true" ]; then
+          DRY_RUN_FLAG="--dry-run"
+        fi
+
+        NO_ACTION_FLAG=""
+        if [ "$BENEISSUE_NO_ACTION" = "true" ]; then
+          NO_ACTION_FLAG="--no-action"
+        fi
+
+        beneissue $COMMAND ${{ github.repository }} --issue "$ISSUE_NUMBER" $VERBOSE_FLAG $DRY_RUN_FLAG $NO_ACTION_FLAG

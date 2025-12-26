@@ -9,6 +9,7 @@ from beneissue.config import DEFAULT_TRIAGE_MODEL
 from beneissue.graph.state import IssueState
 from beneissue.integrations.github import format_existing_issues
 from beneissue.labels import get_triage_labels
+from beneissue.mocks import load_mock
 from beneissue.nodes.schemas import TriageResult
 from beneissue.observability import log_node_event, traced_node
 from beneissue.prompts import load_prompt
@@ -39,6 +40,23 @@ def _build_triage_prompt(state: IssueState) -> str:
 @traced_node("triage", run_type="chain", log_output=True)
 def triage_node(state: IssueState) -> dict:
     """Classify an issue using Claude."""
+    # Dry-run mode: return mock data
+    if state.get("dry_run"):
+        mock = load_mock("triage", state.get("project_root"))
+        decision = mock.get("decision", "valid")
+        log_node_event(
+            "triage",
+            f"decision={decision} [DRY-RUN]",
+            "success",
+        )
+        return {
+            "triage_decision": decision,
+            "triage_reason": mock.get("reason", "[DRY-RUN] Mock result"),
+            "duplicate_of": mock.get("duplicate_of"),
+            "triage_questions": mock.get("questions"),
+            "labels_to_add": get_triage_labels().get(decision, []),
+        }
+
     llm = ChatAnthropic(model=DEFAULT_TRIAGE_MODEL)
 
     system_prompt = _build_triage_prompt(state)

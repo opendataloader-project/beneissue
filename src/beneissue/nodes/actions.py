@@ -9,6 +9,18 @@ logger = get_node_logger("actions")
 
 def apply_labels_node(state: IssueState) -> dict:
     """Apply labels and assignee to the issue on GitHub."""
+    # No-action mode: skip GitHub operations
+    if state.get("no_action"):
+        labels_to_add = state.get("labels_to_add", [])
+        labels_to_remove = state.get("labels_to_remove", [])
+        assignee = state.get("assignee")
+        logger.info("[DRY-RUN] Would apply labels: %s", labels_to_add)
+        if labels_to_remove:
+            logger.info("[DRY-RUN] Would remove labels: %s", labels_to_remove)
+        if assignee:
+            logger.info("[DRY-RUN] Would assign to: %s", assignee)
+        return {}
+
     gh = get_github_client()
     repo = gh.get_repo(state["repo"])
     issue = repo.get_issue(state["issue_number"])
@@ -44,6 +56,12 @@ def apply_labels_node(state: IssueState) -> dict:
 
 def post_comment_node(state: IssueState) -> dict:
     """Post a comment on the issue summarizing the analysis."""
+    # No-action mode: skip GitHub operations
+    if state.get("no_action"):
+        logger.info("[DRY-RUN] Would post comment (analysis_summary=%s...)",
+                    state.get("analysis_summary", "")[:50])
+        return {}
+
     gh = get_github_client()
     repo = gh.get_repo(state["repo"])
     issue = repo.get_issue(state["issue_number"])

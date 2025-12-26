@@ -57,8 +57,10 @@ def git_add_all(repo_path: str) -> GitResult:
     return run_git(repo_path, "add", "-A")
 
 
-def git_commit(repo_path: str, message: str) -> GitResult:
+def git_commit(repo_path: str, message: str, *, allow_empty: bool = False) -> GitResult:
     """Commit staged changes."""
+    if allow_empty:
+        return run_git(repo_path, "commit", "--allow-empty", "-m", message)
     return run_git(repo_path, "commit", "-m", message)
 
 

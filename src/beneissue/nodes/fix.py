@@ -16,6 +16,7 @@ from beneissue.integrations.git import (
     git_push,
     git_status,
 )
+from beneissue.mocks import load_mock
 from beneissue.integrations.github import (
     clone_repo,
     create_pull_request,
@@ -194,9 +195,94 @@ def _commit_and_push(
     return branch_name, None
 
 
+def _create_dry_run_pr(state: IssueState) -> tuple[bool, str | None, str | None]:
+    """Create a dry-run PR with an empty commit.
+
+    Returns:
+        Tuple of (success, pr_url, error)
+    """
+    issue_number = state["issue_number"]
+    repo = state["repo"]
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        repo_path = os.path.join(temp_dir, "repo")
+
+        logger.info("[DRY-RUN] Cloning repository %s...", repo)
+        if not clone_repo(repo, repo_path):
+            return False, None, "Failed to clone repository"
+
+        # Create branch
+        random_suffix = secrets.token_hex(3)
+        branch_name = f"dry-run/issue-{issue_number}-{random_suffix}"
+        git_checkout_branch(repo_path, branch_name)
+        logger.info("[DRY-RUN] Created branch: %s", branch_name)
+
+        # Empty commit
+        configure_git_user(repo_path)
+        commit_msg = (
+            f"[DRY-RUN] Test PR for issue #{issue_number}\n\n"
+            "This is a dry-run test PR with no actual changes.\n"
+            "Please close this PR after testing.\n\n"
+            "Co-Authored-By: Claude <noreply@anthropic.com>"
+        )
+        commit_result = git_commit(repo_path, commit_msg, allow_empty=True)
+        if not commit_result.success:
+            return False, None, f"Failed to create empty commit: {commit_result.stderr}"
+
+        # Push
+        logger.info("[DRY-RUN] Pushing branch %s...", branch_name)
+        push_result = git_push(repo_path, branch_name)
+        if not push_result.success:
+            return False, None, f"Failed to push: {push_result.stderr[:200]}"
+
+        # Create PR
+        pr_title = f"[DRY-RUN] Test PR for #{issue_number}: {state.get('issue_title', 'Unknown')}"
+        pr_body = (
+            "## ⚠️ This is a DRY-RUN test PR\n\n"
+            "This PR was created to test the GitHub integration without actual code changes.\n\n"
+            "**Please close this PR after testing.**\n\n"
+            "---\n"
+            f"Related issue: #{issue_number}"
+        )
+
+        result = create_pull_request(
+            repo=repo,
+            branch_name=branch_name,
+            title=pr_title,
+            body=pr_body,
+        )
+
+        return result.success, result.url, result.error
+
+
 @traceable(name="claude_code_fix", run_type="llm")
 def fix_node(state: IssueState) -> dict:
     """Execute fix using Claude Code CLI."""
+    # Dry-run mode: create empty PR for testing
+    if state.get("dry_run"):
+        logger.info("[DRY-RUN] Creating test PR with empty commit...")
+
+        success, pr_url, error = _create_dry_run_pr(state)
+
+        if success and pr_url:
+            logger.info("[DRY-RUN] Test PR created: %s", pr_url)
+            return {
+                "fix_success": True,
+                "pr_url": pr_url,
+                "fix_error": None,
+                "labels_to_add": ["fix/completed"],
+                "usage_metadata": UsageInfo().to_langsmith_metadata(),
+            }
+
+        logger.error("[DRY-RUN] Failed to create test PR: %s", error)
+        return {
+            "fix_success": False,
+            "pr_url": None,
+            "fix_error": error,
+            "labels_to_add": ["fix/manual-required"],
+            "usage_metadata": UsageInfo().to_langsmith_metadata(),
+        }
+
     prompt = _build_fix_prompt(state)
     issue_number = state["issue_number"]
 

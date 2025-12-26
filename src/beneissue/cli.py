@@ -24,40 +24,38 @@ def triage(
     repo: str = typer.Argument(..., help="Repository in owner/repo format"),
     issue: int = typer.Option(..., "--issue", "-i", help="Issue number to triage"),
     dry_run: bool = typer.Option(
-        False, "--dry-run", "-n", help="Don't apply labels to GitHub"
+        False, "--dry-run", "-n", help="Use mock LLM data (skip API calls)"
+    ),
+    no_action: bool = typer.Option(
+        False, "--no-action", help="Skip GitHub actions (use with --dry-run)"
     ),
 ) -> None:
     """Triage a GitHub issue (classify only, no analysis or fix)."""
     setup_langsmith()
 
-    typer.echo(f"Triaging issue #{issue} in {repo}...")
-
     if dry_run:
-        from beneissue.nodes.intake import intake_node
-        from beneissue.nodes.triage import triage_node
-
-        state = {"repo": repo, "issue_number": issue}
-        state.update(intake_node(state))
-        state.update(triage_node(state))
-
-        typer.echo(f"\nDecision: {state['triage_decision']}")
-        typer.echo(f"Reason: {state['triage_reason']}")
-        if state.get("duplicate_of"):
-            typer.echo(f"Duplicate of: #{state['duplicate_of']}")
-        typer.echo(f"\nLabels to add: {state.get('labels_to_add', [])}")
-        typer.echo("\n[DRY RUN] No actions taken on GitHub.")
+        typer.echo(f"[DRY-RUN] Triaging issue #{issue} in {repo}...")
     else:
-        result = triage_graph.invoke(
-            {
-                "repo": repo,
-                "issue_number": issue,
-            }
-        )
+        typer.echo(f"Triaging issue #{issue} in {repo}...")
 
-        typer.echo(f"\nDecision: {result['triage_decision']}")
-        typer.echo(f"Reason: {result['triage_reason']}")
-        if result.get("duplicate_of"):
-            typer.echo(f"Duplicate of: #{result['duplicate_of']}")
+    result = triage_graph.invoke(
+        {
+            "repo": repo,
+            "issue_number": issue,
+            "dry_run": dry_run,
+            "no_action": no_action,
+        }
+    )
+
+    typer.echo(f"\nDecision: {result['triage_decision']}")
+    typer.echo(f"Reason: {result['triage_reason']}")
+    if result.get("duplicate_of"):
+        typer.echo(f"Duplicate of: #{result['duplicate_of']}")
+
+    if no_action:
+        typer.echo(f"\nLabels to add: {result.get('labels_to_add', [])}")
+        typer.echo("\n[DRY-RUN] No actions taken on GitHub.")
+    else:
         typer.echo(f"\nLabels applied: {result.get('labels_to_add', [])}")
 
 
@@ -66,7 +64,10 @@ def analyze(
     repo: str = typer.Argument(..., help="Repository in owner/repo format"),
     issue: int = typer.Option(..., "--issue", "-i", help="Issue number to analyze"),
     dry_run: bool = typer.Option(
-        False, "--dry-run", "-n", help="Don't apply labels or post comments"
+        False, "--dry-run", "-n", help="Use mock LLM data (skip API calls)"
+    ),
+    no_action: bool = typer.Option(
+        False, "--no-action", help="Skip GitHub actions (use with --dry-run)"
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
@@ -75,36 +76,31 @@ def analyze(
     """Analyze a GitHub issue (no triage, no fix)."""
     setup_langsmith()
 
-    typer.echo(f"Analyzing issue #{issue} in {repo}...")
-
     if dry_run:
-        from beneissue.nodes.analyze import analyze_node
-        from beneissue.nodes.intake import intake_node
-
-        state = {"repo": repo, "issue_number": issue, "verbose": verbose}
-        state.update(intake_node(state))
-        state.update(analyze_node(state))
-
-        typer.echo(f"\nSummary: {state['analysis_summary']}")
-        typer.echo(f"Affected files: {state.get('affected_files', [])}")
-        typer.echo(f"Fix decision: {state['fix_decision']}")
-        typer.echo(f"Reason: {state.get('fix_reason', '')}")
-        typer.echo(f"Assignee: {state.get('assignee', 'None')}")
-        typer.echo(f"\nLabels to add: {state.get('labels_to_add', [])}")
-        typer.echo("\n[DRY RUN] No actions taken on GitHub.")
+        typer.echo(f"[DRY-RUN] Analyzing issue #{issue} in {repo}...")
     else:
-        result = analyze_graph.invoke(
-            {
-                "repo": repo,
-                "issue_number": issue,
-                "verbose": verbose,
-            }
-        )
+        typer.echo(f"Analyzing issue #{issue} in {repo}...")
 
-        typer.echo(f"\nSummary: {result['analysis_summary']}")
-        typer.echo(f"Affected files: {result.get('affected_files', [])}")
-        typer.echo(f"Fix decision: {result['fix_decision']}")
-        typer.echo(f"Assignee: {result.get('assignee', 'None')}")
+    result = analyze_graph.invoke(
+        {
+            "repo": repo,
+            "issue_number": issue,
+            "verbose": verbose,
+            "dry_run": dry_run,
+            "no_action": no_action,
+        }
+    )
+
+    typer.echo(f"\nSummary: {result['analysis_summary']}")
+    typer.echo(f"Affected files: {result.get('affected_files', [])}")
+    typer.echo(f"Fix decision: {result['fix_decision']}")
+    typer.echo(f"Reason: {result.get('fix_reason', '')}")
+    typer.echo(f"Assignee: {result.get('assignee', 'None')}")
+
+    if no_action:
+        typer.echo(f"\nLabels to add: {result.get('labels_to_add', [])}")
+        typer.echo("\n[DRY-RUN] No actions taken on GitHub.")
+    else:
         typer.echo(f"\nLabels applied: {result.get('labels_to_add', [])}")
 
 
@@ -112,16 +108,27 @@ def analyze(
 def fix(
     repo: str = typer.Argument(..., help="Repository in owner/repo format"),
     issue: int = typer.Option(..., "--issue", "-i", help="Issue number to fix"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n", help="Use mock LLM data (skip API calls, no PR created)"
+    ),
+    no_action: bool = typer.Option(
+        False, "--no-action", help="Skip GitHub actions (use with --dry-run)"
+    ),
 ) -> None:
     """Attempt to fix a GitHub issue (no triage, no analysis)."""
     setup_langsmith()
 
-    typer.echo(f"Attempting to fix issue #{issue} in {repo}...")
+    if dry_run:
+        typer.echo(f"[DRY-RUN] Attempting to fix issue #{issue} in {repo}...")
+    else:
+        typer.echo(f"Attempting to fix issue #{issue} in {repo}...")
 
     result = fix_graph.invoke(
         {
             "repo": repo,
             "issue_number": issue,
+            "dry_run": dry_run,
+            "no_action": no_action,
         }
     )
 
@@ -130,26 +137,43 @@ def fix(
             typer.echo("\nFix successful!")
             if result.get("pr_url"):
                 typer.echo(f"PR created: {result['pr_url']}")
+            elif dry_run:
+                typer.echo("[DRY-RUN] No PR created in dry-run mode")
         else:
             typer.echo(f"\nFix failed: {result.get('fix_error', 'Unknown error')}")
 
-    typer.echo(f"\nLabels applied: {result.get('labels_to_add', [])}")
+    if no_action:
+        typer.echo(f"\nLabels to add: {result.get('labels_to_add', [])}")
+        typer.echo("\n[DRY-RUN] No actions taken on GitHub.")
+    else:
+        typer.echo(f"\nLabels applied: {result.get('labels_to_add', [])}")
 
 
 @app.command()
 def run(
     repo: str = typer.Argument(..., help="Repository in owner/repo format"),
     issue: int = typer.Option(..., "--issue", "-i", help="Issue number to process"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n", help="Use mock LLM data (skip API calls)"
+    ),
+    no_action: bool = typer.Option(
+        False, "--no-action", help="Skip GitHub actions (use with --dry-run)"
+    ),
 ) -> None:
     """Run full workflow: triage → analyze → fix → apply labels."""
     setup_langsmith()
 
-    typer.echo(f"Running full workflow for issue #{issue} in {repo}...")
+    if dry_run:
+        typer.echo(f"[DRY-RUN] Running full workflow for issue #{issue} in {repo}...")
+    else:
+        typer.echo(f"Running full workflow for issue #{issue} in {repo}...")
 
     result = full_graph.invoke(
         {
             "repo": repo,
             "issue_number": issue,
+            "dry_run": dry_run,
+            "no_action": no_action,
         }
     )
 
@@ -159,7 +183,10 @@ def run(
 
     if result["triage_decision"] != "valid":
         typer.echo("\nIssue not valid, stopping.")
-        typer.echo(f"Labels applied: {result.get('labels_to_add', [])}")
+        if no_action:
+            typer.echo(f"Labels to add: {result.get('labels_to_add', [])}")
+        else:
+            typer.echo(f"Labels applied: {result.get('labels_to_add', [])}")
         return
 
     if result.get("analysis_summary"):
@@ -173,10 +200,16 @@ def run(
             typer.echo("Fix successful!")
             if result.get("pr_url"):
                 typer.echo(f"PR created: {result['pr_url']}")
+            elif dry_run:
+                typer.echo("[DRY-RUN] No PR created in dry-run mode")
         else:
             typer.echo(f"Fix failed: {result.get('fix_error', 'Unknown error')}")
 
-    typer.echo(f"\nLabels applied: {result.get('labels_to_add', [])}")
+    if no_action:
+        typer.echo(f"\nLabels to add: {result.get('labels_to_add', [])}")
+        typer.echo("\n[DRY-RUN] No actions taken on GitHub.")
+    else:
+        typer.echo(f"\nLabels applied: {result.get('labels_to_add', [])}")
 
 
 
