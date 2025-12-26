@@ -165,6 +165,25 @@ For manual runs or debugging:
 
 Add `--dry-run` to triage/analyze to skip GitHub actions.
 
+## Policy Testing
+
+Validate your triage/analyze rules before deploying:
+
+```
+your-repo/.claude/skills/beneissue/tests/cases/
+├── triage-valid-bug.json
+├── triage-invalid-spam.json
+└── analyze-auto-eligible-typo.json
+```
+
+```bash
+beneissue test                    # Run all test cases
+beneissue test --case spam        # Run specific case
+beneissue test --dry-run          # Validate without AI calls
+```
+
+See [examples/calculator](examples/calculator/.claude/skills/beneissue/tests/cases/) for sample test cases.
+
 ## License
 
 Apache 2.0
