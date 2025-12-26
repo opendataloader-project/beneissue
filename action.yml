@@ -16,6 +16,10 @@ inputs:
   langchain-api-key:
     description: 'LangChain API key for LangSmith tracing'
     required: false
+  langchain-project:
+    description: 'LangSmith project name for tracing'
+    required: false
+    default: 'beneissue'
   command:
     description: 'Command to run (triage, analyze, fix, check)'
     required: false
@@ -50,7 +54,7 @@ runs:
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         LANGCHAIN_API_KEY: ${{ inputs.langchain-api-key }}
         LANGCHAIN_TRACING_V2: ${{ inputs.langchain-api-key && 'true' || 'false' }}
-        LANGCHAIN_PROJECT: 'beneissue'
+        LANGCHAIN_PROJECT: ${{ inputs.langchain-project }}
       run: |
         COMMAND="${{ inputs.command }}"
 

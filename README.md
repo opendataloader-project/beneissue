@@ -40,12 +40,17 @@ pip install beneissue
 
 ### 2. Set up GitHub repository
 
-**Secrets:** Go to Settings → Secrets and variables → Actions:
+**Secrets:** Go to Settings → Secrets and variables → Actions → Secrets tab:
 
 | Secret | Required | Description |
 |--------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Your Claude API key |
 | `LANGCHAIN_API_KEY` | No | LangSmith for tracing |
+
+**Variables:** Go to Settings → Secrets and variables → Actions → Variables tab:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
 | `LANGCHAIN_PROJECT` | No | LangSmith project name (default: `beneissue`) |
 
 **Permissions:** Go to Settings → Actions → General → Workflow permissions:

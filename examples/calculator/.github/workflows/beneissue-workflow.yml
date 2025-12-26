@@ -55,6 +55,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
+          langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
           command: analyze
 
   on-command:
@@ -86,6 +87,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
+          langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
           command: ${{ steps.parse.outputs.command }}
 
   manual:
@@ -98,6 +100,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           anthropic-api-key: ${{ inputs.dry_run && '' || secrets.ANTHROPIC_API_KEY }}
           langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
+          langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
           command: ${{ inputs.command }}
           issue-number: ${{ inputs.issue_number }}
         env:
