@@ -1,7 +1,7 @@
 """Action nodes for GitHub operations."""
 
 from beneissue.graph.state import IssueState
-from beneissue.integrations.github import get_github_client
+from beneissue.integrations.github import ANALYSIS_MARKER, get_github_client
 from beneissue.observability import get_node_logger
 
 logger = get_node_logger("actions")
@@ -61,8 +61,8 @@ def post_comment_node(state: IssueState) -> dict:
 
     # Add analysis summary if available
     if state.get("analysis_summary"):
-        comment_parts.append("---")
-        comment_parts.append("## Analysis Summary")
+        comment_parts.append(ANALYSIS_MARKER)
+        comment_parts.append("## 🤖 Analysis")
         comment_parts.append(state["analysis_summary"])
 
         # Priority and effort estimation

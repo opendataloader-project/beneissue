@@ -16,7 +16,11 @@ from beneissue.integrations.git import (
     git_push,
     git_status,
 )
-from beneissue.integrations.github import clone_repo, create_pull_request
+from beneissue.integrations.github import (
+    clone_repo,
+    create_pull_request,
+    get_analysis_comment,
+)
 from beneissue.nodes.schemas import FixResult
 from beneissue.nodes.utils import parse_result
 from beneissue.observability import get_node_logger
@@ -34,8 +38,26 @@ def _parse_fix_output(output: str) -> FixResult | None:
 
 
 def _build_fix_prompt(state: IssueState) -> str:
-    """Build the fix prompt for Claude Code."""
+    """Build the fix prompt for Claude Code.
+
+    Fetches analysis from GitHub comment if not available in state.
+    This allows fix to run independently after analyze.
+    """
+    # Try to get analysis from GitHub comment first, fall back to state
+    analysis_summary = state.get("analysis_summary")
     affected_files = state.get("affected_files", [])
+
+    if not analysis_summary:
+        logger.info("Fetching analysis from GitHub comment...")
+        comment_data = get_analysis_comment(state["repo"], state["issue_number"])
+        if comment_data:
+            analysis_summary = comment_data.get("summary", "No analysis available")
+            affected_files = comment_data.get("affected_files", [])
+            logger.info("Found analysis in GitHub comment")
+        else:
+            analysis_summary = "No analysis available"
+            logger.warning("No analysis comment found on issue")
+
     affected_files_str = (
         "\n".join(f"- {f}" for f in affected_files)
         if affected_files
@@ -45,7 +67,7 @@ def _build_fix_prompt(state: IssueState) -> str:
     return load_prompt("fix").format(
         issue_number=state["issue_number"],
         issue_title=state["issue_title"],
-        analysis_summary=state.get("analysis_summary", "No analysis available"),
+        analysis_summary=analysis_summary,
         affected_files=affected_files_str,
     )
 

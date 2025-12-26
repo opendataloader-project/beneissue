@@ -204,6 +204,70 @@ class PullRequestResult:
         self.error = error
 
 
+# Marker for beneissue analysis comments (invisible in rendered markdown)
+ANALYSIS_MARKER = "<!-- beneissue:analysis:v1 -->"
+
+
+def get_analysis_comment(repo: str, issue_number: int) -> dict | None:
+    """Fetch the most recent Analysis Summary comment from an issue.
+
+    Looks for comments containing the beneissue analysis marker.
+
+    Args:
+        repo: Repository in owner/repo format
+        issue_number: Issue number
+
+    Returns:
+        Dict with 'summary', 'affected_files', 'priority', 'story_points' or None if not found
+    """
+    gh = get_github_client()
+    repository = gh.get_repo(repo)
+    issue = repository.get_issue(issue_number)
+
+    # Get comments in reverse order (most recent first)
+    comments = list(issue.get_comments())
+    comments.reverse()
+
+    for comment in comments:
+        body = comment.body or ""
+        if ANALYSIS_MARKER not in body:
+            continue
+
+        result: dict = {}
+
+        # Extract summary (text after "## 🤖 Analysis" until next section or ---)
+        import re
+
+        summary_match = re.search(
+            r"## 🤖 Analysis\n(.+?)(?=\n\n\*\*|\n---|\Z)", body, re.DOTALL
+        )
+        if summary_match:
+            result["summary"] = summary_match.group(1).strip()
+
+        # Extract priority
+        priority_match = re.search(r"\*\*Priority:\*\* (P[012])", body)
+        if priority_match:
+            result["priority"] = priority_match.group(1)
+
+        # Extract story points
+        sp_match = re.search(r"\*\*Estimated Effort:\*\* (\d+) SP", body)
+        if sp_match:
+            result["story_points"] = int(sp_match.group(1))
+
+        # Extract affected files
+        files_match = re.search(
+            r"\*\*Affected Files:\*\*\n((?:- `.+`\n?)+)", body
+        )
+        if files_match:
+            files_text = files_match.group(1)
+            result["affected_files"] = re.findall(r"- `(.+?)`", files_text)
+
+        if result:
+            return result
+
+    return None
+
+
 def create_pull_request(
     repo: str,
     branch_name: str,
