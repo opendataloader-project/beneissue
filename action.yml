@@ -20,6 +20,12 @@ inputs:
     description: 'LangSmith project name for tracing'
     required: false
     default: 'beneissue'
+  supabase-url:
+    description: 'Supabase project URL for metrics storage'
+    required: false
+  supabase-service-key:
+    description: 'Supabase service role key for metrics storage'
+    required: false
   command:
     description: 'Command to run (triage, analyze, fix, check)'
     required: false
@@ -55,6 +61,8 @@ runs:
         LANGCHAIN_API_KEY: ${{ inputs.langchain-api-key }}
         LANGCHAIN_TRACING_V2: ${{ inputs.langchain-api-key && 'true' || 'false' }}
         LANGCHAIN_PROJECT: ${{ inputs.langchain-project }}
+        SUPABASE_URL: ${{ inputs.supabase-url }}
+        SUPABASE_SERVICE_KEY: ${{ inputs.supabase-service-key }}
       run: |
         COMMAND="${{ inputs.command }}"
 

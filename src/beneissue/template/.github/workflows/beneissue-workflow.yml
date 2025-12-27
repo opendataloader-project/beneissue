@@ -50,12 +50,14 @@ jobs:
     if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     steps:
-      - uses: opendataloader-project/beneissue@dbe647d9d92d0400344eef3cf56c59d47e728bef # v1
+      - uses: opendataloader-project/beneissue@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
           langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY }}
           command: analyze
 
   on-command:
@@ -89,12 +91,14 @@ jobs:
             echo "command=run" >> $GITHUB_OUTPUT
           fi
 
-      - uses: opendataloader-project/beneissue@dbe647d9d92d0400344eef3cf56c59d47e728bef # v1
+      - uses: opendataloader-project/beneissue@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
           langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY }}
           command: ${{ steps.parse.outputs.command }}
 
   manual:
@@ -102,12 +106,14 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: opendataloader-project/beneissue@dbe647d9d92d0400344eef3cf56c59d47e728bef # v1
+      - uses: opendataloader-project/beneissue@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           anthropic-api-key: ${{ inputs.dry_run && '' || secrets.ANTHROPIC_API_KEY }}
           langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
           langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY }}
           command: ${{ inputs.command }}
           issue-number: ${{ inputs.issue_number }}
         env:
