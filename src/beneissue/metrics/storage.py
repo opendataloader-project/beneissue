@@ -1,0 +1,77 @@
+"""Supabase storage for metrics."""
+
+import logging
+import os
+from typing import Optional
+
+from beneissue.metrics.schemas import WorkflowRunRecord
+
+logger = logging.getLogger("beneissue.metrics")
+
+
+class MetricsStorage:
+    """Supabase storage for workflow metrics."""
+
+    def __init__(self) -> None:
+        self._client = None
+
+    @property
+    def client(self):
+        """Lazy-load Supabase client."""
+        if self._client is None:
+            url = os.environ.get("SUPABASE_URL")
+            key = os.environ.get("SUPABASE_SERVICE_KEY")
+
+            if not url or not key:
+                logger.warning(
+                    "SUPABASE_URL or SUPABASE_SERVICE_KEY not set, metrics disabled"
+                )
+                return None
+
+            from supabase import create_client
+
+            self._client = create_client(url, key)
+
+        return self._client
+
+    def save_run(self, record: WorkflowRunRecord) -> Optional[str]:
+        """Save a workflow run record.
+
+        Returns the record ID if successful, None otherwise.
+        """
+        if self.client is None:
+            logger.debug("Metrics storage not configured, skipping save")
+            return None
+
+        try:
+            result = (
+                self.client.table("workflow_runs")
+                .insert(record.to_supabase_dict())
+                .execute()
+            )
+            record_id = result.data[0]["id"] if result.data else None
+            logger.info(f"Saved workflow run: {record_id}")
+            return record_id
+        except Exception as e:
+            logger.error(f"Failed to save workflow run: {e}")
+            return None
+
+    @property
+    def is_configured(self) -> bool:
+        """Check if storage is configured."""
+        return (
+            os.environ.get("SUPABASE_URL") is not None
+            and os.environ.get("SUPABASE_SERVICE_KEY") is not None
+        )
+
+
+# Global instance
+_storage: Optional[MetricsStorage] = None
+
+
+def get_storage() -> MetricsStorage:
+    """Get the global storage instance."""
+    global _storage
+    if _storage is None:
+        _storage = MetricsStorage()
+    return _storage

@@ -16,6 +16,7 @@ from beneissue.graph.routing import (
     route_after_triage_test,
 )
 from beneissue.graph.state import IssueState
+from beneissue.metrics.collector import record_metrics_node
 from beneissue.nodes.actions import (
     apply_labels_node,
     limit_exceeded_node,
@@ -34,7 +35,7 @@ ANALYZE_CACHE_POLICY = CachePolicy(ttl=3600)
 
 
 def _build_triage_graph(*, enable_cache: bool = False) -> StateGraph:
-    """Build triage-only graph: intake → triage → apply_labels."""
+    """Build triage-only graph: intake → triage → apply_labels → record_metrics."""
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
@@ -45,6 +46,7 @@ def _build_triage_graph(*, enable_cache: bool = False) -> StateGraph:
         cache_policy=TRIAGE_CACHE_POLICY if enable_cache else None,
     )
     workflow.add_node("apply_labels", apply_labels_node)
+    workflow.add_node("record_metrics", record_metrics_node)
 
     workflow.set_entry_point("intake")
 
@@ -60,7 +62,8 @@ def _build_triage_graph(*, enable_cache: bool = False) -> StateGraph:
 
     workflow.add_edge("limit_exceeded", END)
     workflow.add_edge("triage", "apply_labels")
-    workflow.add_edge("apply_labels", END)
+    workflow.add_edge("apply_labels", "record_metrics")
+    workflow.add_edge("record_metrics", END)
 
     return workflow
 
@@ -82,7 +85,7 @@ def create_triage_workflow(
 
 
 def _build_analyze_graph(*, enable_cache: bool = False) -> StateGraph:
-    """Build analyze-only graph: intake → analyze → post_comment → apply_labels."""
+    """Build analyze-only graph: intake → analyze → post_comment → apply_labels → record_metrics."""
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
@@ -94,6 +97,7 @@ def _build_analyze_graph(*, enable_cache: bool = False) -> StateGraph:
     )
     workflow.add_node("apply_labels", apply_labels_node)
     workflow.add_node("post_comment", post_comment_node)
+    workflow.add_node("record_metrics", record_metrics_node)
 
     workflow.set_entry_point("intake")
 
@@ -112,7 +116,8 @@ def _build_analyze_graph(*, enable_cache: bool = False) -> StateGraph:
     # Always post comment after analyze
     workflow.add_edge("analyze", "post_comment")
     workflow.add_edge("post_comment", "apply_labels")
-    workflow.add_edge("apply_labels", END)
+    workflow.add_edge("apply_labels", "record_metrics")
+    workflow.add_edge("record_metrics", END)
 
     return workflow
 
@@ -134,7 +139,7 @@ def create_analyze_workflow(
 
 
 def _build_fix_graph() -> StateGraph:
-    """Build fix-only graph: intake → fix → post_comment/apply_labels."""
+    """Build fix-only graph: intake → fix → post_comment/apply_labels → record_metrics."""
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
@@ -142,6 +147,7 @@ def _build_fix_graph() -> StateGraph:
     workflow.add_node("fix", fix_node)
     workflow.add_node("apply_labels", apply_labels_node)
     workflow.add_node("post_comment", post_comment_node)
+    workflow.add_node("record_metrics", record_metrics_node)
 
     workflow.set_entry_point("intake")
 
@@ -167,7 +173,8 @@ def _build_fix_graph() -> StateGraph:
     )
 
     workflow.add_edge("post_comment", "apply_labels")
-    workflow.add_edge("apply_labels", END)
+    workflow.add_edge("apply_labels", "record_metrics")
+    workflow.add_edge("record_metrics", END)
 
     return workflow
 
@@ -203,6 +210,7 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
     workflow.add_node("fix", fix_node)
     workflow.add_node("apply_labels", apply_labels_node)
     workflow.add_node("post_comment", post_comment_node)
+    workflow.add_node("record_metrics", record_metrics_node)
 
     # Define edges
     workflow.set_entry_point("intake")
@@ -250,8 +258,9 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
         },
     )
 
-    # Terminal edges
-    workflow.add_edge("apply_labels", END)
+    # Terminal edges: apply_labels → record_metrics → END
+    workflow.add_edge("apply_labels", "record_metrics")
+    workflow.add_edge("record_metrics", END)
     workflow.add_edge("post_comment", "apply_labels")
 
     return workflow

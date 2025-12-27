@@ -1,5 +1,6 @@
 """IssueState schema for LangGraph workflow."""
 
+from datetime import datetime
 from pathlib import Path
 from typing import Literal, Optional, TypedDict
 
@@ -23,6 +24,10 @@ class IssueState(TypedDict, total=False):
     # === Rate limiting ===
     daily_run_count: int
     daily_limit_exceeded: bool
+
+    # === Metrics timestamps ===
+    issue_created_at: Optional[datetime]  # From GitHub API
+    workflow_started_at: datetime  # Set at intake
 
     # === Triage 결과 ===
     triage_decision: Literal["valid", "invalid", "duplicate", "needs_info"]
