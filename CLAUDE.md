@@ -82,3 +82,22 @@ All AI responses use Pydantic models in `nodes/schemas.py`:
 Labels are defined in `labels.py` and synced via `beneissue labels` command:
 - `triage/valid`, `triage/invalid`, `triage/duplicate`, `triage/needs-info`
 - `fix/auto-eligible`, `fix/manual-required`, `fix/completed`
+
+### Metrics Collection
+
+Metrics are stored in Supabase PostgreSQL. Code in `src/beneissue/metrics/`:
+
+- **schemas.py**: `WorkflowRunRecord` Pydantic model with all workflow fields
+- **storage.py**: `MetricsStorage` class with Supabase client, `save_run()` method
+- **collector.py**: `MetricsCollector` class and `record_metrics_node` LangGraph node
+
+**Workflow integration**: All graphs end with `→ record_metrics → END`. The node:
+1. Skips if `dry_run` or `no_action` mode
+2. Skips if `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` not configured
+3. Converts `IssueState` to `WorkflowRunRecord` and saves to Supabase
+
+**Environment variables** (optional):
+- `SUPABASE_URL`: Project URL
+- `SUPABASE_SERVICE_KEY`: Service role key for write access
+
+**Database setup**: Run `scripts/sql/001_create_tables.sql` in Supabase SQL Editor.

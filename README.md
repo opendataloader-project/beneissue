@@ -137,6 +137,33 @@ export LANGCHAIN_PROJECT=your-project-name  # default: beneissue
 
 When `LANGCHAIN_API_KEY` is set, LangSmith tracing is automatically enabled.
 
+### Metrics Storage (optional)
+
+Store workflow metrics in Supabase for dashboards and analytics:
+
+**1. Create a Supabase project** at [supabase.com](https://supabase.com)
+
+**2. Run the SQL setup script:**
+
+```sql
+-- Copy contents from scripts/sql/001_create_tables.sql
+-- Run in Supabase SQL Editor
+```
+
+**3. Set environment variables:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SUPABASE_URL` | Yes | Your Supabase project URL |
+| `SUPABASE_SERVICE_KEY` | Yes | Service role key (for write access) |
+
+```bash
+export SUPABASE_URL=https://your-project.supabase.co
+export SUPABASE_SERVICE_KEY=your-service-role-key
+```
+
+When both variables are set, metrics are automatically recorded after each workflow run. Without these variables, beneissue works normally but skips metrics storage.
+
 ## Labels
 
 | Label | Meaning |
