@@ -355,6 +355,7 @@ def init(
 
     Copies template files from the package to the current repository:
     - .github/workflows/beneissue-workflow.yml (GitHub Action workflow)
+    - .github/workflows/beneissue-test.yml (Test workflow for metrics/policy)
     - .claude/skills/beneissue/ (Claude skill directory with config and test cases)
     - GitHub labels for triage and fix status
     """

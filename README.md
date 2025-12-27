@@ -157,6 +157,8 @@ Store workflow metrics in Supabase for dashboards and analytics:
 | `SUPABASE_URL` | Yes | Your Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Yes | Service role key (for write access) |
 
+> **Note:** `SUPABASE_SERVICE_ROLE_KEY` is also supported (Vercel integration naming).
+
 ```bash
 export SUPABASE_URL=https://your-project.supabase.co
 export SUPABASE_SERVICE_KEY=your-service-role-key

@@ -101,3 +101,9 @@ Metrics are stored in Supabase PostgreSQL. Code in `src/beneissue/metrics/`:
 - `SUPABASE_SERVICE_KEY`: Service role key for write access
 
 **Database setup**: Run `scripts/sql/001_create_tables.sql` in Supabase SQL Editor.
+
+**Testing**: Integration tests auto-load `.env` file via `tests/conftest.py`:
+```bash
+uv run pytest tests/test_metrics.py -v                    # All metrics tests
+uv run pytest tests/test_metrics.py::TestMetricsIntegration -v  # Supabase integration only
+```

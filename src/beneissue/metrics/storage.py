@@ -20,7 +20,10 @@ class MetricsStorage:
         """Lazy-load Supabase client."""
         if self._client is None:
             url = os.environ.get("SUPABASE_URL")
-            key = os.environ.get("SUPABASE_SERVICE_KEY")
+            # Support both naming conventions
+            key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get(
+                "SUPABASE_SERVICE_ROLE_KEY"
+            )
 
             if not url or not key:
                 logger.warning(
@@ -59,10 +62,11 @@ class MetricsStorage:
     @property
     def is_configured(self) -> bool:
         """Check if storage is configured."""
-        return (
-            os.environ.get("SUPABASE_URL") is not None
-            and os.environ.get("SUPABASE_SERVICE_KEY") is not None
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get(
+            "SUPABASE_SERVICE_ROLE_KEY"
         )
+        return url is not None and key is not None
 
 
 # Global instance

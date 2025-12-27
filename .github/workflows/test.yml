@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run unit tests
+        run: uv run pytest tests/ -v --ignore=tests/test_metrics.py
+
+      - name: Run metrics unit tests (no integration)
+        run: uv run pytest tests/test_metrics.py -v -k "not Integration"
+
+  integration:
+    runs-on: ubuntu-latest
+    # Only run on main branch pushes (not PRs) to avoid exposing secrets
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run Supabase integration tests
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_KEY" ]; then
+            uv run pytest tests/test_metrics.py::TestMetricsIntegration -v
+          else
+            echo "⚠️ Supabase secrets not configured, skipping integration tests"
+          fi
