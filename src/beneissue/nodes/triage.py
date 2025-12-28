@@ -37,8 +37,11 @@ def _build_triage_prompt(state: IssueState) -> str:
     )
 
 
-def _extract_token_usage(raw_response) -> dict:
-    """Extract token usage from LangChain response metadata."""
+def _extract_usage_metadata(raw_response, model: str = DEFAULT_TRIAGE_MODEL) -> dict:
+    """Extract usage_metadata from LangChain response metadata.
+
+    Returns a dict compatible with LangSmith tracking format.
+    """
     usage = raw_response.response_metadata.get("usage", {})
     input_tokens = usage.get("input_tokens", 0)
     output_tokens = usage.get("output_tokens", 0)
@@ -50,8 +53,11 @@ def _extract_token_usage(raw_response) -> dict:
     return {
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
         "input_cost": input_cost,
         "output_cost": output_cost,
+        "ls_provider": "anthropic",
+        "ls_model_name": model,
     }
 
 
@@ -93,8 +99,8 @@ def triage_node(state: IssueState) -> dict:
     response = result["parsed"]
     raw_response = result["raw"]
 
-    # Extract token usage
-    token_usage = _extract_token_usage(raw_response)
+    # Extract usage metadata
+    usage_metadata = _extract_usage_metadata(raw_response)
 
     # Log decision details
     log_node_event(
@@ -110,5 +116,5 @@ def triage_node(state: IssueState) -> dict:
         "duplicate_of": response.duplicate_of,
         "triage_questions": response.questions,
         "labels_to_add": get_triage_labels().get(response.decision, []),
-        **token_usage,
+        "usage_metadata": usage_metadata,
     }

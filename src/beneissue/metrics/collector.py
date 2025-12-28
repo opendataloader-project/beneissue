@@ -60,12 +60,19 @@ class MetricsCollector:
             fix_success=state.get("fix_success"),
             pr_url=state.get("pr_url"),
             fix_error=state.get("fix_error"),
-            # Token usage (directly from state)
-            input_tokens=state.get("input_tokens", 0),
-            output_tokens=state.get("output_tokens", 0),
-            input_cost=state.get("input_cost", 0.0),
-            output_cost=state.get("output_cost", 0.0),
+            # Token usage (extracted from usage_metadata)
+            **self._extract_token_fields(state),
         )
+
+    def _extract_token_fields(self, state: IssueState) -> dict:
+        """Extract token fields from usage_metadata for DB storage."""
+        usage = state.get("usage_metadata", {})
+        return {
+            "input_tokens": usage.get("input_tokens", 0),
+            "output_tokens": usage.get("output_tokens", 0),
+            "input_cost": usage.get("input_cost", 0.0),
+            "output_cost": usage.get("output_cost", 0.0),
+        }
 
     def _detect_workflow_type(self, state: IssueState) -> str:
         """Detect workflow type from state contents."""

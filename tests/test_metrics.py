@@ -210,10 +210,15 @@ class TestMetricsCollector:
             "workflow_started_at": now,
             "triage_decision": "valid",
             "triage_reason": "Valid bug report",
-            "input_tokens": 1000,
-            "output_tokens": 500,
-            "input_cost": 0.003,
-            "output_cost": 0.025,
+            "usage_metadata": {
+                "input_tokens": 1000,
+                "output_tokens": 500,
+                "total_tokens": 1500,
+                "input_cost": 0.003,
+                "output_cost": 0.025,
+                "ls_provider": "anthropic",
+                "ls_model_name": "claude-haiku-4-5",
+            },
         }
 
         record = collector._state_to_record(state)

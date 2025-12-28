@@ -60,7 +60,5 @@ class IssueState(TypedDict, total=False):
     no_action: bool  # Skip GitHub actions (labels, comments)
 
     # === Token usage (cumulative across all nodes) ===
-    input_tokens: int
-    output_tokens: int
-    input_cost: float
-    output_cost: float
+    # Single source of truth for both LangSmith tracking and DB storage
+    usage_metadata: dict

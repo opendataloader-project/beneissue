@@ -89,18 +89,11 @@ class UsageInfo:
         return result
 
     def to_state_dict(self) -> dict:
-        """Convert to IssueState token fields for DB storage and LangSmith tracking."""
-        metadata = self.to_langsmith_metadata()
-        return {
-            "input_tokens": metadata["input_tokens"],
-            "output_tokens": metadata["output_tokens"],
-            "input_cost": metadata["input_cost"],
-            "output_cost": metadata["output_cost"],
-            "usage_metadata": metadata,  # For LangSmith tracking
-        }
+        """Convert to IssueState usage_metadata for DB storage and LangSmith tracking."""
+        return {"usage_metadata": self.to_langsmith_metadata()}
 
     def with_state(self, result: dict) -> dict:
-        """Add token usage fields to a result dict and return it."""
+        """Add usage_metadata to a result dict and return it."""
         return {**result, **self.to_state_dict()}
 
 
