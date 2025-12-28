@@ -37,6 +37,24 @@ def _build_triage_prompt(state: IssueState) -> str:
     )
 
 
+def _extract_token_usage(raw_response) -> dict:
+    """Extract token usage from LangChain response metadata."""
+    usage = raw_response.response_metadata.get("usage", {})
+    input_tokens = usage.get("input_tokens", 0)
+    output_tokens = usage.get("output_tokens", 0)
+
+    # Calculate costs based on Haiku pricing ($0.25/M input, $1.25/M output)
+    input_cost = input_tokens * 0.25 / 1_000_000
+    output_cost = output_tokens * 1.25 / 1_000_000
+
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "input_cost": input_cost,
+        "output_cost": output_cost,
+    }
+
+
 @traced_node("triage", run_type="chain", log_output=True)
 def triage_node(state: IssueState) -> dict:
     """Classify an issue using Claude."""
@@ -61,7 +79,9 @@ def triage_node(state: IssueState) -> dict:
 
     system_prompt = _build_triage_prompt(state)
 
-    response = llm.with_structured_output(TriageResult).invoke(
+    # Use include_raw=True to get token usage from response metadata
+    structured_llm = llm.with_structured_output(TriageResult, include_raw=True)
+    result = structured_llm.invoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(
@@ -69,6 +89,12 @@ def triage_node(state: IssueState) -> dict:
             ),
         ]
     )
+
+    response = result["parsed"]
+    raw_response = result["raw"]
+
+    # Extract token usage
+    token_usage = _extract_token_usage(raw_response)
 
     # Log decision details
     log_node_event(
@@ -84,4 +110,5 @@ def triage_node(state: IssueState) -> dict:
         "duplicate_of": response.duplicate_of,
         "triage_questions": response.questions,
         "labels_to_add": get_triage_labels().get(response.decision, []),
+        **token_usage,
     }

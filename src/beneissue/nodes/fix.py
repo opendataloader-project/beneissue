@@ -271,7 +271,7 @@ def fix_node(state: IssueState) -> dict:
                 "pr_url": pr_url,
                 "fix_error": None,
                 "labels_to_add": ["fix/completed"],
-                "usage_metadata": UsageInfo().to_langsmith_metadata(),
+                **UsageInfo().to_state_dict(),
             }
 
         logger.error("[DRY-RUN] Failed to create test PR: %s", error)
@@ -280,7 +280,7 @@ def fix_node(state: IssueState) -> dict:
             "pr_url": None,
             "fix_error": error,
             "labels_to_add": ["fix/manual-required"],
-            "usage_metadata": UsageInfo().to_langsmith_metadata(),
+            **UsageInfo().to_state_dict(),
         }
 
     prompt = _build_fix_prompt(state)
@@ -300,25 +300,25 @@ def fix_node(state: IssueState) -> dict:
         fix_result, error, usage = _run_claude_code_fix(repo_path, prompt)
 
         if error:
-            return usage.with_metadata(error)
+            return usage.with_state(error)
 
         changes = git_status(repo_path)
         if not changes:
             logger.warning("No changes were made by Claude Code")
-            return usage.with_metadata(_error_result("No changes were made"))
+            return usage.with_state(_error_result("No changes were made"))
 
         logger.debug("Changes detected:\n%s", changes)
 
         branch_name, error = _commit_and_push(repo_path, issue_number, fix_result)
         if error:
-            return usage.with_metadata(error)
+            return usage.with_state(error)
 
         logger.info("Creating pull request...")
         pr_success, pr_url, pr_error = _create_pr(state, fix_result, branch_name)
 
         if pr_success and pr_url:
             logger.info("PR created: %s", pr_url)
-            return usage.with_metadata({
+            return usage.with_state({
                 "fix_success": True,
                 "pr_url": pr_url,
                 "labels_to_remove": ["fix/auto-eligible"],
@@ -326,4 +326,4 @@ def fix_node(state: IssueState) -> dict:
             })
 
         logger.error("Failed to create PR: %s", pr_error)
-        return usage.with_metadata(_error_result(pr_error or "Failed to create PR"))
+        return usage.with_state(_error_result(pr_error or "Failed to create PR"))

@@ -32,7 +32,8 @@ CREATE TABLE workflow_runs (
     -- Token usage
     input_tokens INTEGER DEFAULT 0,
     output_tokens INTEGER DEFAULT 0,
-    total_cost_usd DECIMAL(10, 6) DEFAULT 0,
+    input_cost DECIMAL(10, 6) DEFAULT 0,
+    output_cost DECIMAL(10, 6) DEFAULT 0,
 
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

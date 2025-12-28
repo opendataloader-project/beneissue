@@ -105,7 +105,7 @@ def analyze_node(state: IssueState) -> dict:
             "comment_draft": mock.get("comment_draft"),
             "assignee": mock.get("assignee") or repo_owner,
             "labels_to_add": [f"fix/{mock.get('fix_decision', 'comment-only').replace('_', '-')}"],
-            "usage_metadata": UsageInfo().to_langsmith_metadata(),
+            **UsageInfo().to_state_dict(),
         }
 
     prompt = _build_analyze_prompt(state)
@@ -130,14 +130,12 @@ def analyze_node(state: IssueState) -> dict:
             if not clone_repo(state["repo"], repo_path):
                 logger.error("Failed to clone repository")
                 fallback = _fallback_analyze("Failed to clone repository", repo_owner=repo_owner)
-                fallback["usage_metadata"] = UsageInfo().to_langsmith_metadata()
-                return fallback
+                return {**fallback, **UsageInfo().to_state_dict()}
 
             result, usage = _run_analysis(repo_path, prompt, verbose=verbose, repo_owner=repo_owner)
 
-    # Add usage_metadata to output for LangSmith token tracking
-    result["usage_metadata"] = usage.to_langsmith_metadata()
-    return result
+    # Add token usage to result for state storage
+    return {**result, **usage.to_state_dict()}
 
 
 def _build_result(response: AnalyzeResult, repo_owner: str | None = None) -> dict:

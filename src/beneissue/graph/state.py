@@ -58,3 +58,9 @@ class IssueState(TypedDict, total=False):
     # === Dry-run mode ===
     dry_run: bool  # Skip LLM calls, use mock data
     no_action: bool  # Skip GitHub actions (labels, comments)
+
+    # === Token usage (cumulative across all nodes) ===
+    input_tokens: int
+    output_tokens: int
+    input_cost: float
+    output_cost: float

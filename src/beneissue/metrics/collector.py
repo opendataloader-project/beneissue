@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Optional
 
 from beneissue.graph.state import IssueState
@@ -39,9 +38,6 @@ class MetricsCollector:
         # Detect workflow type from state
         workflow_type = self._detect_workflow_type(state)
 
-        # Extract usage metadata if available
-        usage = state.get("usage_metadata", {})
-
         return WorkflowRunRecord(
             # Identification
             repo=state.get("repo", ""),
@@ -64,10 +60,11 @@ class MetricsCollector:
             fix_success=state.get("fix_success"),
             pr_url=state.get("pr_url"),
             fix_error=state.get("fix_error"),
-            # Token usage
-            input_tokens=usage.get("input_tokens", 0),
-            output_tokens=usage.get("output_tokens", 0),
-            total_cost_usd=Decimal(str(usage.get("total_cost", 0))),
+            # Token usage (directly from state)
+            input_tokens=state.get("input_tokens", 0),
+            output_tokens=state.get("output_tokens", 0),
+            input_cost=state.get("input_cost", 0.0),
+            output_cost=state.get("output_cost", 0.0),
         )
 
     def _detect_workflow_type(self, state: IssueState) -> str:

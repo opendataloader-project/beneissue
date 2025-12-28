@@ -1,7 +1,6 @@
 """Tests for metrics collection and storage."""
 
 from datetime import datetime, timezone
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -49,11 +48,13 @@ class TestWorkflowRunRecord:
             fix_error=None,
             input_tokens=1000,
             output_tokens=500,
-            total_cost_usd=Decimal("0.05"),
+            input_cost=0.003,
+            output_cost=0.025,
         )
         assert record.triage_decision == "valid"
         assert record.fix_success is True
-        assert record.total_cost_usd == Decimal("0.05")
+        assert record.input_cost == pytest.approx(0.003)
+        assert record.output_cost == pytest.approx(0.025)
 
     def test_to_supabase_dict(self):
         """Test conversion to Supabase-compatible dict."""
@@ -64,16 +65,17 @@ class TestWorkflowRunRecord:
             workflow_type="analyze",
             workflow_started_at=now,
             workflow_completed_at=now,
-            total_cost_usd=Decimal("0.123"),
+            input_cost=0.003,
+            output_cost=0.025,
         )
         data = record.to_supabase_dict()
 
         assert data["repo"] == "owner/repo"
         assert data["issue_number"] == 123
         assert data["workflow_type"] == "analyze"
-        # Decimal should be converted to float for JSON
-        assert isinstance(data["total_cost_usd"], float)
-        assert data["total_cost_usd"] == 0.123
+        # Costs should be floats
+        assert isinstance(data["input_cost"], float)
+        assert isinstance(data["output_cost"], float)
         # Timestamps should be ISO format strings
         assert isinstance(data["workflow_started_at"], str)
         assert isinstance(data["workflow_completed_at"], str)
@@ -208,11 +210,10 @@ class TestMetricsCollector:
             "workflow_started_at": now,
             "triage_decision": "valid",
             "triage_reason": "Valid bug report",
-            "usage_metadata": {
-                "input_tokens": 1000,
-                "output_tokens": 500,
-                "total_cost": 0.05,
-            },
+            "input_tokens": 1000,
+            "output_tokens": 500,
+            "input_cost": 0.003,
+            "output_cost": 0.025,
         }
 
         record = collector._state_to_record(state)
@@ -223,7 +224,8 @@ class TestMetricsCollector:
         assert record.triage_decision == "valid"
         assert record.input_tokens == 1000
         assert record.output_tokens == 500
-        assert record.total_cost_usd == Decimal("0.05")
+        assert record.input_cost == pytest.approx(0.003)
+        assert record.output_cost == pytest.approx(0.025)
 
 
 class TestRecordMetricsNode:

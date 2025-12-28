@@ -1,7 +1,6 @@
 """Pydantic schemas for metrics data."""
 
 from datetime import datetime
-from decimal import Decimal
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -43,11 +42,9 @@ class WorkflowRunRecord(BaseModel):
     # Token usage
     input_tokens: int = 0
     output_tokens: int = 0
-    total_cost_usd: Decimal = Decimal("0")
+    input_cost: float = 0.0
+    output_cost: float = 0.0
 
     def to_supabase_dict(self) -> dict:
         """Convert to dict for Supabase insert."""
-        data = self.model_dump(mode="json")
-        # Convert Decimal to float for JSON
-        data["total_cost_usd"] = float(self.total_cost_usd)
-        return data
+        return self.model_dump(mode="json")
