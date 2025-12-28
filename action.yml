@@ -68,7 +68,7 @@ runs:
 
         # check command doesn't need issue number
         if [ "$COMMAND" = "check" ]; then
-          beneissue check ${{ github.repository }}
+          beneissue check "${{ github.repository }}"
           exit 0
         fi
 
@@ -97,4 +97,4 @@ runs:
           NO_ACTION_FLAG="--no-action"
         fi
 
-        beneissue $COMMAND ${{ github.repository }} --issue "$ISSUE_NUMBER" $VERBOSE_FLAG $DRY_RUN_FLAG $NO_ACTION_FLAG
+        beneissue "$COMMAND" "${{ github.repository }}" --issue "$ISSUE_NUMBER" $VERBOSE_FLAG $DRY_RUN_FLAG $NO_ACTION_FLAG

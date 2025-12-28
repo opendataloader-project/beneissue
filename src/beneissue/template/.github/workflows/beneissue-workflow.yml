@@ -79,17 +79,13 @@ jobs:
         env:
           COMMENT: ${{ github.event.comment.body }}
         run: |
-          if [[ "$COMMENT" == *"@beneissue triage"* ]]; then
-            echo "command=triage" >> $GITHUB_OUTPUT
-          elif [[ "$COMMENT" == *"@beneissue analyze"* ]]; then
-            echo "command=analyze" >> $GITHUB_OUTPUT
-          elif [[ "$COMMENT" == *"@beneissue fix"* ]]; then
-            echo "command=fix" >> $GITHUB_OUTPUT
-          elif [[ "$COMMENT" == *"@beneissue run"* ]]; then
-            echo "command=run" >> $GITHUB_OUTPUT
-          else
-            echo "command=run" >> $GITHUB_OUTPUT
-          fi
+          case "$COMMENT" in
+            *"@beneissue triage"*) echo "command=triage" >> "$GITHUB_OUTPUT" ;;
+            *"@beneissue analyze"*) echo "command=analyze" >> "$GITHUB_OUTPUT" ;;
+            *"@beneissue fix"*) echo "command=fix" >> "$GITHUB_OUTPUT" ;;
+            *"@beneissue run"*) echo "command=run" >> "$GITHUB_OUTPUT" ;;
+            *) echo "command=run" >> "$GITHUB_OUTPUT" ;;
+          esac
 
       - uses: opendataloader-project/beneissue@v2
         with:
