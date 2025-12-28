@@ -21,8 +21,15 @@ BEGIN
           AND id != NEW.id
     ) INTO is_first_run;
 
-    INSERT INTO daily_metrics (date, repo, total_runs, unique_issues)
-    VALUES (run_date, NEW.repo, 1, CASE WHEN is_first_run THEN 1 ELSE 0 END)
+    INSERT INTO daily_metrics (
+        date, repo, total_runs, unique_issues,
+        total_input_tokens, total_output_tokens, total_input_cost, total_output_cost
+    )
+    VALUES (
+        run_date, NEW.repo, 1, CASE WHEN is_first_run THEN 1 ELSE 0 END,
+        COALESCE(NEW.input_tokens, 0), COALESCE(NEW.output_tokens, 0),
+        COALESCE(NEW.input_cost, 0), COALESCE(NEW.output_cost, 0)
+    )
     ON CONFLICT (date, repo) DO UPDATE SET
         total_runs = daily_metrics.total_runs + 1,
         unique_issues = daily_metrics.unique_issues +
@@ -46,11 +53,13 @@ BEGIN
         needs_info_count = daily_metrics.needs_info_count +
             CASE WHEN NEW.triage_decision = 'needs_info' THEN 1 ELSE 0 END,
 
-        -- Fix results
+        -- Fix results (including comment_only)
         fix_attempted_count = daily_metrics.fix_attempted_count +
             CASE WHEN NEW.fix_success IS NOT NULL THEN 1 ELSE 0 END,
         fix_success_count = daily_metrics.fix_success_count +
             CASE WHEN NEW.fix_success = true THEN 1 ELSE 0 END,
+        comment_only_count = daily_metrics.comment_only_count +
+            CASE WHEN NEW.fix_decision = 'comment_only' THEN 1 ELSE 0 END,
 
         -- Tokens & cost
         total_input_tokens = daily_metrics.total_input_tokens + COALESCE(NEW.input_tokens, 0),

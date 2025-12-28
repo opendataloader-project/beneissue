@@ -22,7 +22,7 @@ LABELS: dict[str, LabelDef] = {
     "fix/auto-eligible": LabelDef("0E8A16", "AI auto-fix eligible"),
     "fix/manual-required": LabelDef("FBCA04", "Requires human implementation"),
     "fix/comment-only": LabelDef("C5DEF5", "No code change needed"),
-    "fix/completed": LabelDef("6f42c1", "Fix completed, PR created"),
+    "fix/completed": LabelDef("6f42c1", "AI resolved without human intervention"),
     "fix/failed": LabelDef("d73a4a", "Auto-fix failed"),
 }
 

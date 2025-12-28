@@ -95,16 +95,23 @@ def analyze_node(state: IssueState) -> dict:
         repo = state.get("repo", "")
         repo_owner = extract_repo_owner(repo)
         logger.info("[DRY-RUN] Returning mock analysis result")
+
+        fix_decision = mock.get("fix_decision", "comment_only")
+        if fix_decision == "comment_only":
+            labels = ["fix/comment-only", "fix/completed"]
+        else:
+            labels = [f"fix/{fix_decision.replace('_', '-')}"]
+
         return {
             "analysis_summary": mock.get("summary", "[DRY-RUN] Mock analysis"),
             "affected_files": mock.get("affected_files", []),
-            "fix_decision": mock.get("fix_decision", "comment_only"),
+            "fix_decision": fix_decision,
             "fix_reason": mock.get("reason", "[DRY-RUN] Mock mode"),
             "priority": mock.get("priority", "P2"),
             "story_points": mock.get("story_points", 1),
             "comment_draft": mock.get("comment_draft"),
             "assignee": mock.get("assignee") or repo_owner,
-            "labels_to_add": [f"fix/{mock.get('fix_decision', 'comment-only').replace('_', '-')}"],
+            "labels_to_add": labels,
             **UsageInfo().to_state_dict(),
         }
 
@@ -142,6 +149,12 @@ def _build_result(response: AnalyzeResult, repo_owner: str | None = None) -> dic
     """Build the result dict from AnalyzeResult."""
     assignee = response.assignee if response.assignee else repo_owner
 
+    # comment_only is a successful resolution (no code change needed)
+    if response.fix_decision == "comment_only":
+        labels = ["fix/comment-only", "fix/completed"]
+    else:
+        labels = [f"fix/{response.fix_decision.replace('_', '-')}"]
+
     return {
         "analysis_summary": response.summary,
         "affected_files": response.affected_files,
@@ -151,7 +164,7 @@ def _build_result(response: AnalyzeResult, repo_owner: str | None = None) -> dic
         "story_points": response.story_points,
         "comment_draft": response.comment_draft,
         "assignee": assignee,
-        "labels_to_add": [f"fix/{response.fix_decision.replace('_', '-')}"],
+        "labels_to_add": labels,
     }
 
 

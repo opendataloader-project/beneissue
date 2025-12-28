@@ -66,6 +66,7 @@ CREATE TABLE daily_metrics (
     -- Fix outcomes
     fix_attempted_count INTEGER DEFAULT 0,
     fix_success_count INTEGER DEFAULT 0,
+    comment_only_count INTEGER DEFAULT 0,
 
     -- Response time (seconds)
     avg_first_response_seconds DECIMAL,

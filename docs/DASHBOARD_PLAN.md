@@ -87,9 +87,16 @@ AI 이슈 자동화 성능을 측정하고 시각화하는 웹 대시보드
 | 지표 | 계산 |
 |------|------|
 | AI 필터링율 | `(invalid + duplicate) / total × 100` |
-| 자동 해결율 | `fix_success / fix_attempted × 100` |
+| 자동 해결율 | `(invalid + duplicate + needs_info + fix_success + comment_only) / total × 100` |
 | 평균 응답 시간 | `avg(first_response - issue_created)` |
 | 토큰 사용량 | 누적 input/output 토큰 |
+
+**자동 해결 = 인간 개입 없이 종료 가능한 케이스:**
+- `triage/invalid` - 유효하지 않은 이슈
+- `triage/duplicate` - 중복 이슈
+- `triage/needs-info` - 정보 요청 후 대기
+- `fix/completed` - PR 자동 생성 완료
+- `fix/comment-only` - 코멘트로 해결 (코드 변경 불필요)
 
 ---
 
