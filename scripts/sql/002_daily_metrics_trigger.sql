@@ -6,13 +6,27 @@ CREATE OR REPLACE FUNCTION update_daily_metrics()
 RETURNS TRIGGER AS $$
 DECLARE
     run_date DATE;
+    is_first_run BOOLEAN;
 BEGIN
     run_date := DATE(NEW.workflow_started_at);
 
-    INSERT INTO daily_metrics (date, repo, total_issues)
-    VALUES (run_date, NEW.repo, 1)
+    -- 오늘 이 이슈의 첫 실행인지 확인 (unique_issues 정확한 카운트를 위해)
+    -- 범위 쿼리로 인덱스 활용 (DATE() 함수 대신)
+    SELECT NOT EXISTS (
+        SELECT 1 FROM workflow_runs
+        WHERE repo = NEW.repo
+          AND issue_number = NEW.issue_number
+          AND workflow_started_at >= run_date
+          AND workflow_started_at < run_date + INTERVAL '1 day'
+          AND id != NEW.id
+    ) INTO is_first_run;
+
+    INSERT INTO daily_metrics (date, repo, total_runs, unique_issues)
+    VALUES (run_date, NEW.repo, 1, CASE WHEN is_first_run THEN 1 ELSE 0 END)
     ON CONFLICT (date, repo) DO UPDATE SET
-        total_issues = daily_metrics.total_issues + 1,
+        total_runs = daily_metrics.total_runs + 1,
+        unique_issues = daily_metrics.unique_issues +
+            CASE WHEN is_first_run THEN 1 ELSE 0 END,
 
         -- Workflow type counts
         triage_count = daily_metrics.triage_count +

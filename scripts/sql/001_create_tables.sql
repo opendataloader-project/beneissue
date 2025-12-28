@@ -42,6 +42,7 @@ CREATE TABLE workflow_runs (
 CREATE INDEX idx_workflow_runs_repo ON workflow_runs(repo);
 CREATE INDEX idx_workflow_runs_created ON workflow_runs(created_at);
 CREATE INDEX idx_workflow_runs_workflow_type ON workflow_runs(workflow_type);
+CREATE INDEX idx_workflow_runs_repo_issue_started ON workflow_runs(repo, issue_number, workflow_started_at);
 
 -- daily_metrics: 일별 집계 (대시보드 쿼리 최적화)
 CREATE TABLE daily_metrics (
@@ -50,7 +51,8 @@ CREATE TABLE daily_metrics (
     repo VARCHAR(255),  -- NULL = 전체 집계
 
     -- Counts
-    total_issues INTEGER DEFAULT 0,
+    total_runs INTEGER DEFAULT 0,      -- 워크플로우 실행 횟수
+    unique_issues INTEGER DEFAULT 0,   -- 고유 이슈 수 (중복 제외)
     triage_count INTEGER DEFAULT 0,
     analyze_count INTEGER DEFAULT 0,
     fix_count INTEGER DEFAULT 0,
