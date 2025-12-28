@@ -4,10 +4,19 @@ import json
 import shutil
 import subprocess
 import time
+from importlib.metadata import version as get_version
 from pathlib import Path
 from typing import Optional
 
 import typer
+
+
+def _get_beneissue_version() -> str:
+    """Get beneissue version from package metadata."""
+    try:
+        return get_version("beneissue")
+    except Exception:
+        return "unknown"
 
 from beneissue.config import setup_langsmith
 from beneissue.graph.workflow import analyze_graph, fix_graph, full_graph, triage_graph
@@ -370,7 +379,8 @@ def init(
         typer.echo("Install: https://cli.github.com/")
         skip_labels = True
 
-    typer.echo("Initializing beneissue...\n")
+    version = _get_beneissue_version()
+    typer.echo(f"Initializing beneissue v{version}...\n")
 
     # Get template directory from package
     template_dir = Path(__file__).parent / "template"
@@ -421,7 +431,7 @@ def init(
         )
         if result.returncode == 0:
             commit_message = (
-                "chore: add AI-powered GitHub issue automation workflow\n\n"
+                f"chore: initialize beneissue v{version}\n\n"
                 "Set up beneissue for automated issue triage, analysis, and fixes.\n"
                 "- GitHub Actions workflow for issue event handling\n"
                 "- Configuration and test cases in .claude/skills/beneissue/"
@@ -448,7 +458,7 @@ def init(
             typer.echo(f"Git add failed: {result.stderr.strip()}")
 
     typer.echo("\n" + "=" * 50)
-    typer.echo("Setup complete!")
+    typer.echo(f"beneissue v{version} setup complete!")
     typer.echo("=" * 50)
     typer.echo("\nNext steps:")
     typer.echo("1. Add secrets to your repository:")
