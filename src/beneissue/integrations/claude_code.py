@@ -49,6 +49,8 @@ class UsageInfo:
 
         Note: Claude Code SDK only provides total_cost, so we estimate the split
         based on Anthropic's typical pricing ratio (~5:1 output:input for Sonnet).
+
+        Note: total_cost excluded - already split into input_cost + output_cost (avoid double-counting)
         """
         # Estimate cost split since Claude Code SDK only gives total cost
         # Anthropic Sonnet pricing: $3/M input, $15/M output (5:1 ratio)
@@ -69,7 +71,6 @@ class UsageInfo:
             "total_tokens": self.total_tokens,
             "input_cost": input_cost,
             "output_cost": output_cost,
-            "total_cost": self.total_cost_usd,
             "ls_provider": "anthropic",
             "ls_model_name": self.model,
         }
