@@ -53,7 +53,7 @@ jobs:
               print("   To enable: Settings → Secrets → Add SUPABASE_URL and SUPABASE_SERVICE_KEY")
               sys.exit(0)
 
-          print(f"✓ SUPABASE_URL configured: {url[:30]}...")
+          print("✓ SUPABASE_URL configured")
           print("✓ SUPABASE_SERVICE_KEY configured")
 
           # Test connection
@@ -91,7 +91,19 @@ jobs:
       - name: Install beneissue
         run: uv pip install --system beneissue
 
+      - name: Check for test cases
+        id: check-cases
+        run: |
+          if [ -d ".claude/skills/beneissue/tests/cases" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Test cases directory not found: .claude/skills/beneissue/tests/cases"
+            echo "   Skipping policy tests (no test cases configured)"
+          fi
+
       - name: Run policy tests
+        if: steps.check-cases.outputs.exists == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
