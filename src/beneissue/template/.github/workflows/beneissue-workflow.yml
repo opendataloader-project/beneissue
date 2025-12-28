@@ -57,7 +57,7 @@ jobs:
           langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
           langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           command: analyze
 
   on-command:
@@ -94,7 +94,7 @@ jobs:
           langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
           langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           command: ${{ steps.parse.outputs.command }}
 
   manual:
@@ -109,7 +109,7 @@ jobs:
           langchain-api-key: ${{ secrets.LANGCHAIN_API_KEY }}
           langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           command: ${{ inputs.command }}
           issue-number: ${{ inputs.issue_number }}
         env:

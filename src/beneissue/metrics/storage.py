@@ -66,7 +66,8 @@ class MetricsStorage:
         key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get(
             "SUPABASE_SERVICE_ROLE_KEY"
         )
-        return url is not None and key is not None
+        # Check for non-empty values (not just not None)
+        return bool(url) and bool(key)
 
 
 # Global instance
