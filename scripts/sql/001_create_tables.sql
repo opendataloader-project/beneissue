@@ -73,7 +73,8 @@ CREATE TABLE daily_metrics (
     -- Cost
     total_input_tokens INTEGER DEFAULT 0,
     total_output_tokens INTEGER DEFAULT 0,
-    total_cost_usd DECIMAL(10, 4) DEFAULT 0,
+    total_input_cost DECIMAL(10, 6) DEFAULT 0,
+    total_output_cost DECIMAL(10, 6) DEFAULT 0,
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
