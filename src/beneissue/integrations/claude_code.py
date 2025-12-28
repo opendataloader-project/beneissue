@@ -154,19 +154,23 @@ async def run_claude_code_async(
                     if message.result:
                         collected_output.append(message.result)
 
-                    # Extract usage information
+                    # Extract usage from ResultMessage (cumulative totals)
                     usage_info.total_cost_usd = message.total_cost_usd or 0.0
+                    usage_info.model = model
 
                     if message.usage:
-                        usage_info.input_tokens = message.usage.get("input_tokens", 0)
-                        usage_info.output_tokens = message.usage.get("output_tokens", 0)
-                        usage_info.cache_creation_tokens = message.usage.get(
+                        # Note: input_tokens is only non-cached tokens
+                        # Total input = input_tokens + cache_creation + cache_read
+                        cache_creation = message.usage.get(
                             "cache_creation_input_tokens", 0
                         )
-                        usage_info.cache_read_tokens = message.usage.get(
-                            "cache_read_input_tokens", 0
-                        )
-                        usage_info.model = model
+                        cache_read = message.usage.get("cache_read_input_tokens", 0)
+                        base_input = message.usage.get("input_tokens", 0)
+
+                        usage_info.input_tokens = base_input + cache_creation + cache_read
+                        usage_info.output_tokens = message.usage.get("output_tokens", 0)
+                        usage_info.cache_creation_tokens = cache_creation
+                        usage_info.cache_read_tokens = cache_read
 
         stdout = "\n".join(collected_output)
         return ClaudeCodeResult(
