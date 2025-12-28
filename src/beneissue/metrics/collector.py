@@ -104,9 +104,9 @@ def record_metrics_node(state: IssueState) -> dict:
 
     This node should be added before END in workflow graphs.
     """
-    # Skip if dry run or no_action mode
-    if state.get("dry_run") or state.get("no_action"):
-        logger.debug("Dry run or no_action mode, skipping metrics")
+    # Skip if dry run mode (no_action still records metrics)
+    if state.get("dry_run"):
+        logger.debug("Dry run mode, skipping metrics")
         return {}
 
     collector = get_collector()

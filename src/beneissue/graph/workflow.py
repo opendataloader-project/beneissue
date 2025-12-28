@@ -289,7 +289,7 @@ def create_full_workflow(
 
 
 def _build_test_full_graph(*, enable_cache: bool = False) -> StateGraph:
-    """Build test graph: load_preset → triage → analyze → END.
+    """Build test graph: load_preset → triage → analyze → record_metrics → END.
 
     This graph is designed for LangSmith Studio testing without GitHub dependencies.
     Uses configurable preset_name to load test cases from JSON files.
@@ -308,22 +308,24 @@ def _build_test_full_graph(*, enable_cache: bool = False) -> StateGraph:
         analyze_node,
         cache_policy=ANALYZE_CACHE_POLICY if enable_cache else None,
     )
+    workflow.add_node("record_metrics", record_metrics_node)
 
     # Define edges
     workflow.set_entry_point("load_preset")
     workflow.add_edge("load_preset", "triage")
 
-    # Conditional routing: valid → analyze, else → END
+    # Conditional routing: valid → analyze, else → record_metrics → END
     workflow.add_conditional_edges(
         "triage",
         route_after_triage_test,
         {
             "analyze": "analyze",
-            END: END,
+            END: "record_metrics",
         },
     )
 
-    workflow.add_edge("analyze", END)
+    workflow.add_edge("analyze", "record_metrics")
+    workflow.add_edge("record_metrics", END)
 
     return workflow
 

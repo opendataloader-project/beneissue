@@ -9,6 +9,10 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from dotenv import load_dotenv
+
+# Load .env file for local development (Supabase credentials, etc.)
+load_dotenv()
 
 
 def _get_beneissue_version() -> str:
@@ -739,6 +743,7 @@ def test(
 
 def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -> dict:
     """Run a single test case and return result."""
+    from beneissue.metrics.collector import record_metrics_node
     from beneissue.nodes.analyze import analyze_node
     from beneissue.nodes.triage import triage_node
 
@@ -843,6 +848,9 @@ def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -
                         "passed": False,
                         "reason": f"Expected assignee one of {expected['assignee_one_of']}, got '{actual_assignee}'",
                     }
+
+        # Record metrics to Supabase (no_action mode is fine, we still record)
+        record_metrics_node(state)
 
         return {"passed": True, "reason": ""}
 
