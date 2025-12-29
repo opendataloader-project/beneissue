@@ -127,14 +127,13 @@ def _run_claude_code_fix(
         cwd=repo_path,
         allowed_tools=["Read", "Glob", "Grep", "Edit", "Write", "Bash"],
         timeout=CLAUDE_CODE_TIMEOUT,
-        verbose=True,
     )
 
     usage = result.usage
     usage.log_summary(logger)
 
     if result.stdout:
-        logger.debug("Claude Code Output:\n%s", result.stdout)
+        logger.info("Claude Code Output:\n%s", result.stdout)
 
     if result.error:
         logger.error("Claude Code error: %s", result.error)

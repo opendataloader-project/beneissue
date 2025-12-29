@@ -166,7 +166,6 @@ async def run_claude_code_async(
     cwd: str,
     allowed_tools: list[str] | None = None,
     timeout: int = DEFAULT_TIMEOUT,
-    verbose: bool = False,
     model: str | None = None,
 ) -> ClaudeCodeResult:
     """Run Claude Code SDK with a prompt asynchronously.
@@ -176,7 +175,6 @@ async def run_claude_code_async(
         cwd: Working directory (repository path)
         allowed_tools: List of allowed tools (e.g., ["Read", "Glob", "Grep"])
         timeout: Command timeout in seconds
-        verbose: Enable verbose output (currently unused with SDK)
         model: Model to use (e.g., "claude-sonnet-4.5"). Defaults to DEFAULT_CLAUDE_CODE_MODEL.
 
     Returns:
@@ -269,7 +267,6 @@ def run_claude_code(
     cwd: str,
     allowed_tools: list[str] | None = None,
     timeout: int = DEFAULT_TIMEOUT,
-    verbose: bool = False,
     model: str | None = None,
 ) -> ClaudeCodeResult:
     """Run Claude Code SDK with a prompt (sync wrapper).
@@ -278,9 +275,8 @@ def run_claude_code(
         prompt: The prompt to send to Claude Code
         cwd: Working directory (repository path)
         allowed_tools: List of allowed tools (e.g., ["Read", "Glob", "Grep"])
-        model: Model to use (e.g., "claude-sonnet-4.5"). Defaults to DEFAULT_CLAUDE_CODE_MODEL.
         timeout: Command timeout in seconds
-        verbose: Enable verbose output
+        model: Model to use (e.g., "claude-sonnet-4.5"). Defaults to DEFAULT_CLAUDE_CODE_MODEL.
 
     Returns:
         ClaudeCodeResult with output, status, and usage info
@@ -291,7 +287,6 @@ def run_claude_code(
             cwd=cwd,
             allowed_tools=allowed_tools,
             timeout=timeout,
-            verbose=verbose,
             model=model,
         )
     )

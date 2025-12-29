@@ -33,10 +33,10 @@ inputs:
   issue-number:
     description: 'Issue number to process (defaults to event issue)'
     required: false
-  verbose:
-    description: 'Enable verbose output for debugging'
+  log-level:
+    description: 'Log level (DEBUG, INFO, WARNING, ERROR). Defaults to DEBUG for detailed logging.'
     required: false
-    default: 'false'
+    default: 'DEBUG'
 
 runs:
   using: 'composite'
@@ -63,6 +63,7 @@ runs:
         LANGCHAIN_PROJECT: ${{ inputs.langchain-project }}
         SUPABASE_URL: ${{ inputs.supabase-url }}
         SUPABASE_SERVICE_KEY: ${{ inputs.supabase-service-key }}
+        BENEISSUE_LOG_LEVEL: ${{ inputs.log-level }}
       run: |
         COMMAND="${{ inputs.command }}"
 
@@ -82,11 +83,6 @@ runs:
           exit 1
         fi
 
-        VERBOSE_FLAG=""
-        if [ "${{ inputs.verbose }}" = "true" ]; then
-          VERBOSE_FLAG="--verbose"
-        fi
-
         DRY_RUN_FLAG=""
         if [ "$BENEISSUE_DRY_RUN" = "true" ]; then
           DRY_RUN_FLAG="--dry-run"
@@ -97,4 +93,4 @@ runs:
           NO_ACTION_FLAG="--no-action"
         fi
 
-        beneissue "$COMMAND" "${{ github.repository }}" --issue "$ISSUE_NUMBER" $VERBOSE_FLAG $DRY_RUN_FLAG $NO_ACTION_FLAG
+        beneissue "$COMMAND" "${{ github.repository }}" --issue "$ISSUE_NUMBER" $DRY_RUN_FLAG $NO_ACTION_FLAG

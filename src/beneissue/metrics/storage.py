@@ -56,8 +56,8 @@ class MetricsStorage:
 
         try:
             supabase_dict = record.to_supabase_dict()
-            logger.info(
-                "[METRICS DEBUG] save_run inserting record with tokens: in=%d, out=%d, in_cost=%.6f, out_cost=%.6f",
+            logger.debug(
+                "Inserting record with tokens: in=%d, out=%d, in_cost=%.6f, out_cost=%.6f",
                 supabase_dict.get("input_tokens", 0),
                 supabase_dict.get("output_tokens", 0),
                 supabase_dict.get("input_cost", 0.0),

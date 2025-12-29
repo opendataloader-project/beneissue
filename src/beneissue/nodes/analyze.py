@@ -36,7 +36,7 @@ def _parse_analyze_response(output: str) -> AnalyzeResult | None:
 
 
 def _run_analysis(
-    repo_path: str, prompt: str, *, verbose: bool = False, repo_owner: str | None = None
+    repo_path: str, prompt: str, *, repo_owner: str | None = None
 ) -> tuple[dict, UsageInfo]:
     """Run Claude Code analysis on a repository path.
 
@@ -50,14 +50,13 @@ def _run_analysis(
         cwd=repo_path,
         allowed_tools=["Read", "Glob", "Grep"],
         timeout=CLAUDE_CODE_TIMEOUT,
-        verbose=verbose,
     )
 
     usage = result.usage
     usage.log_summary(logger)
 
     if result.stdout:
-        logger.debug("Claude Code Output:\n%s", result.stdout)
+        logger.info("Claude Code Output:\n%s", result.stdout)
 
     if result.error:
         logger.error("Analysis error: %s", result.error)
@@ -114,7 +113,6 @@ def analyze_node(state: IssueState) -> dict:
         }
 
     prompt = _build_analyze_prompt(state)
-    verbose = state.get("verbose", False)
 
     logger.info("Starting analysis for issue: %s", state.get("issue_title", "Unknown"))
 
@@ -125,7 +123,7 @@ def analyze_node(state: IssueState) -> dict:
     if state.get("project_root"):
         logger.info("Using local project root: %s", state["project_root"])
         result, usage = _run_analysis(
-            str(state["project_root"]), prompt, verbose=verbose, repo_owner=repo_owner
+            str(state["project_root"]), prompt, repo_owner=repo_owner
         )
     else:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -137,7 +135,7 @@ def analyze_node(state: IssueState) -> dict:
                 fallback = _fallback_analyze("Failed to clone repository", repo_owner=repo_owner)
                 return {**fallback, **UsageInfo().to_state_dict()}
 
-            result, usage = _run_analysis(repo_path, prompt, verbose=verbose, repo_owner=repo_owner)
+            result, usage = _run_analysis(repo_path, prompt, repo_owner=repo_owner)
 
     # Return usage_metadata in state dict for DB storage only
     # NOTE: Do NOT call set_on_run_tree() here - it causes cost duplication in LangSmith

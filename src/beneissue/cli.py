@@ -89,12 +89,9 @@ def analyze(
     no_action: bool = typer.Option(
         False, "--no-action", help="Skip GitHub actions (use with --dry-run)"
     ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose output"
-    ),
 ) -> None:
     """Analyze a GitHub issue (no triage, no fix)."""
-    setup_logging(verbose=verbose)
+    setup_logging()
     setup_langsmith()
 
     if dry_run:
@@ -107,7 +104,6 @@ def analyze(
             "repo": repo,
             "issue_number": issue,
             "command": "analyze",
-            "verbose": verbose,
             "dry_run": dry_run,
             "no_action": no_action,
         }
@@ -629,9 +625,6 @@ def test(
     dry_run: bool = typer.Option(
         False, "--dry-run", "-n", help="Validate test cases without running AI"
     ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Show detailed output including LLM responses"
-    ),
 ) -> None:
     """Run policy tests from test cases in the repository.
 
@@ -641,7 +634,7 @@ def test(
         beneissue test                           # Run tests in current directory
         beneissue test --path examples/calculator  # Run tests in example project
     """
-    setup_logging(verbose=verbose)
+    setup_logging()
     setup_langsmith()
 
     project_root = Path(path) if path else Path(".")
@@ -702,7 +695,7 @@ def test(
 
         # Run the test with timing
         start_time = time.perf_counter()
-        result = _run_test_case(test_case, project_root, verbose=verbose)
+        result = _run_test_case(test_case, project_root)
         elapsed = time.perf_counter() - start_time
         total_time += elapsed
 
@@ -746,11 +739,15 @@ def test(
         raise typer.Exit(1)
 
 
-def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -> dict:
+def _run_test_case(test_case: dict, project_root: Path) -> dict:
     """Run a single test case and return result."""
+    import logging
+
     from beneissue.metrics.collector import record_metrics_node
     from beneissue.nodes.analyze import analyze_node
     from beneissue.nodes.triage import triage_node
+
+    logger = logging.getLogger("beneissue.test")
 
     stage = test_case.get("stage", "triage")
     input_data = test_case.get("input", {})
@@ -766,7 +763,6 @@ def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -
         "issue_labels": [],
         "issue_author": "test-user",
         "existing_issues": input_data.get("existing_issues", []),
-        "verbose": verbose,
     }
 
     try:
@@ -775,10 +771,11 @@ def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -
             triage_result = triage_node(state)
             state.update(triage_result)
 
-            if verbose:
-                typer.secho("  [Triage Result]", fg=typer.colors.CYAN)
-                typer.echo(f"    decision: {state.get('triage_decision')}")
-                typer.echo(f"    reason: {state.get('triage_reason', '')[:100]}")
+            logger.debug(
+                "Triage result: decision=%s, reason=%s",
+                state.get("triage_decision"),
+                state.get("triage_reason", "")[:100],
+            )
 
             # Check triage expectations
             if "decision" in expected:
@@ -809,13 +806,13 @@ def _run_test_case(test_case: dict, project_root: Path, verbose: bool = False) -
             analyze_result = analyze_node(state)
             state.update(analyze_result)
 
-            if verbose:
-                typer.secho("  [Analyze Result]", fg=typer.colors.CYAN)
-                typer.echo(f"    fix_decision: {state.get('fix_decision')}")
-                typer.echo(f"    assignee: {state.get('assignee')}")
-                typer.echo(f"    summary: {state.get('analysis_summary', '')[:150]}")
-                if state.get("affected_files"):
-                    typer.echo(f"    affected_files: {state.get('affected_files')}")
+            logger.debug(
+                "Analyze result: fix_decision=%s, assignee=%s, summary=%s, affected_files=%s",
+                state.get("fix_decision"),
+                state.get("assignee"),
+                state.get("analysis_summary", "")[:150],
+                state.get("affected_files", []),
+            )
 
             # Check for CLI errors
             summary = state.get("analysis_summary", "")

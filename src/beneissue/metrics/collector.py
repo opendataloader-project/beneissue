@@ -73,8 +73,8 @@ class MetricsCollector:
             "input_cost": usage.get("input_cost", 0.0),
             "output_cost": usage.get("output_cost", 0.0),
         }
-        logger.info(
-            "[METRICS DEBUG] _extract_token_fields extracted: %s from usage_metadata: %s",
+        logger.debug(
+            "Extracted token fields: %s from usage_metadata: %s",
             result,
             usage if usage else "EMPTY",
         )
@@ -124,12 +124,12 @@ def record_metrics_node(state: IssueState) -> dict:
 
     # Debug logging for usage_metadata
     usage = state.get("usage_metadata", {})
-    logger.info(
-        "[METRICS DEBUG] record_metrics_node received state.usage_metadata: %s",
+    logger.debug(
+        "record_metrics_node received usage_metadata: %s",
         usage if usage else "EMPTY/MISSING",
     )
-    logger.info(
-        "[METRICS DEBUG] usage_metadata values: in_tokens=%d, out_tokens=%d, in_cost=%.6f, out_cost=%.6f",
+    logger.debug(
+        "usage_metadata values: in_tokens=%d, out_tokens=%d, in_cost=%.6f, out_cost=%.6f",
         usage.get("input_tokens", 0),
         usage.get("output_tokens", 0),
         usage.get("input_cost", 0.0),

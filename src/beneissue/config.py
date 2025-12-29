@@ -9,16 +9,21 @@ from typing import Optional
 import yaml
 
 
-def setup_logging(verbose: bool = False) -> None:
+def setup_logging() -> None:
     """Configure logging for beneissue.
 
-    Args:
-        verbose: If True, use DEBUG level. Otherwise, use INFO level.
+    Log level is determined by BENEISSUE_LOG_LEVEL environment variable.
+    Defaults to DEBUG for detailed logging during early development.
+
+    Supported levels: DEBUG, INFO, WARNING, ERROR
     """
-    level = logging.DEBUG if verbose else logging.INFO
+    level_name = os.environ.get("BENEISSUE_LOG_LEVEL", "DEBUG").upper()
+    level = getattr(logging, level_name, logging.DEBUG)
+
     logging.basicConfig(
         level=level,
-        format="%(name)s - %(levelname)s - %(message)s",
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     # Also set for beneissue namespace specifically
     logging.getLogger("beneissue").setLevel(level)
