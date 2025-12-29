@@ -27,9 +27,9 @@ inputs:
     description: 'Supabase service role key for metrics storage'
     required: false
   command:
-    description: 'Command to run (triage, analyze, fix, check)'
+    description: 'Command to run (triage, analyze, fix, run, check)'
     required: false
-    default: 'analyze'
+    default: 'triage'
   issue-number:
     description: 'Issue number to process (defaults to event issue)'
     required: false

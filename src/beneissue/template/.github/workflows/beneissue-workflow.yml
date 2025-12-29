@@ -45,7 +45,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  analyze:
+  process-issue:
     # Run on new or reopened issues
     if: github.event_name == 'issues'
     runs-on: ubuntu-latest
@@ -58,7 +58,7 @@ jobs:
           langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
           supabase-url: ${{ secrets.SUPABASE_URL }}
           supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          command: analyze
+          command: triage
 
   on-command:
     # Run on @beneissue commands in comments
