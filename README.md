@@ -128,14 +128,23 @@ team:
 
 ### LangSmith (optional)
 
-Set environment variables for tracing:
+Enable LangSmith tracing to monitor and debug your workflows.
+
+**For GitHub Actions:** Add to repository secrets/variables:
+
+| Type | Name | Description |
+|------|------|-------------|
+| Secret | `LANGCHAIN_API_KEY` | Your LangSmith API key |
+| Variable | `LANGCHAIN_PROJECT` | Project name (default: `beneissue`) |
+
+**For local development:**
 
 ```bash
 export LANGCHAIN_API_KEY=your-langsmith-api-key
 export LANGCHAIN_PROJECT=your-project-name  # default: beneissue
 ```
 
-When `LANGCHAIN_API_KEY` is set, LangSmith tracing is automatically enabled.
+When `LANGCHAIN_API_KEY` is set, LangSmith tracing is automatically enabled. Traces will appear in the specified project (or `beneissue` if not set).
 
 ### Metrics Storage (optional)
 
