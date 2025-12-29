@@ -37,10 +37,11 @@ def _build_triage_prompt(state: IssueState) -> str:
     )
 
 
-def _extract_usage_metadata(raw_response, model: str = DEFAULT_TRIAGE_MODEL) -> dict:
+def _extract_usage_metadata(raw_response) -> dict:
     """Extract usage_metadata from LangChain response metadata.
 
     Returns a dict compatible with LangSmith tracking format.
+    Only includes keys allowed by LangSmith's validate_extracted_usage_metadata.
     """
     usage = raw_response.response_metadata.get("usage", {})
     input_tokens = usage.get("input_tokens", 0)
@@ -56,8 +57,6 @@ def _extract_usage_metadata(raw_response, model: str = DEFAULT_TRIAGE_MODEL) -> 
         "total_tokens": input_tokens + output_tokens,
         "input_cost": input_cost,
         "output_cost": output_cost,
-        "ls_provider": "anthropic",
-        "ls_model_name": model,
     }
 
 

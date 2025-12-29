@@ -216,8 +216,6 @@ class TestMetricsCollector:
                 "total_tokens": 1500,
                 "input_cost": 0.003,
                 "output_cost": 0.025,
-                "ls_provider": "anthropic",
-                "ls_model_name": "claude-haiku-4-5",
             },
         }
 

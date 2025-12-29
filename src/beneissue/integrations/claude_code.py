@@ -82,6 +82,10 @@ class UsageInfo:
 
         LangSmith expects input_cost/output_cost for proper cost attribution.
         Without these, costs appear as "Other" in the dashboard.
+
+        Note: Only includes keys allowed by LangSmith's validate_extracted_usage_metadata:
+        input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost,
+        input_token_details, output_token_details, input_cost_details, output_cost_details.
         """
         return {
             "input_tokens": self.input_tokens,
@@ -89,8 +93,6 @@ class UsageInfo:
             "total_tokens": self.total_tokens,
             "input_cost": self.input_cost_usd,
             "output_cost": self.output_cost_usd,
-            "ls_provider": "anthropic",
-            "ls_model_name": self.model,
         }
 
     def log_summary(self, logger) -> None:
