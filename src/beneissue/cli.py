@@ -22,7 +22,7 @@ def _get_beneissue_version() -> str:
     except Exception:
         return "unknown"
 
-from beneissue.config import setup_langsmith
+from beneissue.config import setup_langsmith, setup_logging
 from beneissue.graph.workflow import analyze_graph, fix_graph, full_graph, triage_graph
 from beneissue.labels import LABELS
 
@@ -44,6 +44,7 @@ def triage(
     ),
 ) -> None:
     """Triage a GitHub issue (classify only, no analysis or fix)."""
+    setup_logging()
     setup_langsmith()
 
     if dry_run:
@@ -93,6 +94,7 @@ def analyze(
     ),
 ) -> None:
     """Analyze a GitHub issue (no triage, no fix)."""
+    setup_logging(verbose=verbose)
     setup_langsmith()
 
     if dry_run:
@@ -141,6 +143,7 @@ def fix(
     ),
 ) -> None:
     """Attempt to fix a GitHub issue (no triage, no analysis)."""
+    setup_logging()
     setup_langsmith()
 
     if dry_run:
@@ -192,6 +195,7 @@ def run(
     ),
 ) -> None:
     """Run full workflow: triage → analyze → fix → apply labels."""
+    setup_logging()
     setup_langsmith()
 
     if dry_run:
@@ -637,6 +641,7 @@ def test(
         beneissue test                           # Run tests in current directory
         beneissue test --path examples/calculator  # Run tests in example project
     """
+    setup_logging(verbose=verbose)
     setup_langsmith()
 
     project_root = Path(path) if path else Path(".")

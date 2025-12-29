@@ -67,12 +67,18 @@ class MetricsCollector:
     def _extract_token_fields(self, state: IssueState) -> dict:
         """Extract token fields from usage_metadata for DB storage."""
         usage = state.get("usage_metadata", {})
-        return {
+        result = {
             "input_tokens": usage.get("input_tokens", 0),
             "output_tokens": usage.get("output_tokens", 0),
             "input_cost": usage.get("input_cost", 0.0),
             "output_cost": usage.get("output_cost", 0.0),
         }
+        logger.info(
+            "[METRICS DEBUG] _extract_token_fields extracted: %s from usage_metadata: %s",
+            result,
+            usage if usage else "EMPTY",
+        )
+        return result
 
     def _detect_workflow_type(self, state: IssueState) -> str:
         """Detect workflow type from state contents."""
@@ -115,6 +121,20 @@ def record_metrics_node(state: IssueState) -> dict:
     if state.get("dry_run"):
         logger.debug("Dry run mode, skipping metrics")
         return {}
+
+    # Debug logging for usage_metadata
+    usage = state.get("usage_metadata", {})
+    logger.info(
+        "[METRICS DEBUG] record_metrics_node received state.usage_metadata: %s",
+        usage if usage else "EMPTY/MISSING",
+    )
+    logger.info(
+        "[METRICS DEBUG] usage_metadata values: in_tokens=%d, out_tokens=%d, in_cost=%.6f, out_cost=%.6f",
+        usage.get("input_tokens", 0),
+        usage.get("output_tokens", 0),
+        usage.get("input_cost", 0.0),
+        usage.get("output_cost", 0.0),
+    )
 
     collector = get_collector()
     record_id = collector.record_workflow(state)

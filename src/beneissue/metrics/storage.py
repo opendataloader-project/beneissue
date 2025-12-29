@@ -31,9 +31,17 @@ class MetricsStorage:
                 )
                 return None
 
-            from supabase import create_client
+            from supabase import ClientOptions, create_client
 
-            self._client = create_client(url, key)
+            # Support SSL verification bypass for corporate proxies
+            ssl_verify = os.environ.get("SUPABASE_SSL_VERIFY", "true").lower()
+            if ssl_verify in ("false", "0", "no"):
+                import httpx
+
+                options = ClientOptions(httpx_client=httpx.Client(verify=False))
+                self._client = create_client(url, key, options=options)
+            else:
+                self._client = create_client(url, key)
 
         return self._client
 
@@ -47,9 +55,17 @@ class MetricsStorage:
             return None
 
         try:
+            supabase_dict = record.to_supabase_dict()
+            logger.info(
+                "[METRICS DEBUG] save_run inserting record with tokens: in=%d, out=%d, in_cost=%.6f, out_cost=%.6f",
+                supabase_dict.get("input_tokens", 0),
+                supabase_dict.get("output_tokens", 0),
+                supabase_dict.get("input_cost", 0.0),
+                supabase_dict.get("output_cost", 0.0),
+            )
             result = (
                 self.client.table("workflow_runs")
-                .insert(record.to_supabase_dict())
+                .insert(supabase_dict)
                 .execute()
             )
             record_id = result.data[0]["id"] if result.data else None

@@ -1,11 +1,27 @@
 """Configuration and LangSmith setup."""
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 import yaml
+
+
+def setup_logging(verbose: bool = False) -> None:
+    """Configure logging for beneissue.
+
+    Args:
+        verbose: If True, use DEBUG level. Otherwise, use INFO level.
+    """
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(name)s - %(levelname)s - %(message)s",
+    )
+    # Also set for beneissue namespace specifically
+    logging.getLogger("beneissue").setLevel(level)
 
 
 # Default values

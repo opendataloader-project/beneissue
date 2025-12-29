@@ -242,11 +242,18 @@ class TestRecordMetricsNode:
         result = record_metrics_node(state)
         assert result == {}
 
-    def test_skips_on_no_action(self):
-        """Test node skips recording on no_action mode."""
-        state = {"no_action": True, "repo": "owner/repo", "issue_number": 123}
-        result = record_metrics_node(state)
-        assert result == {}
+    def test_records_on_no_action(self):
+        """Test node still records metrics on no_action mode (no_action only skips GitHub actions)."""
+        with patch("beneissue.metrics.collector.get_collector") as mock_get_collector:
+            mock_collector = MagicMock()
+            mock_collector.record_workflow.return_value = "test-uuid"
+            mock_get_collector.return_value = mock_collector
+
+            state = {"no_action": True, "repo": "owner/repo", "issue_number": 123}
+            result = record_metrics_node(state)
+
+            assert result == {}
+            mock_collector.record_workflow.assert_called_once_with(state)
 
     @patch("beneissue.metrics.collector.get_collector")
     def test_records_metrics(self, mock_get_collector):
