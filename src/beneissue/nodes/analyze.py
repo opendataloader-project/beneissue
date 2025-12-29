@@ -3,15 +3,13 @@
 import os
 import tempfile
 
-from langsmith import traceable
-
 from beneissue.graph.state import IssueState
 from beneissue.integrations.claude_code import UsageInfo, run_claude_code
 from beneissue.integrations.github import clone_repo
 from beneissue.mocks import load_mock
 from beneissue.nodes.schemas import AnalyzeResult
 from beneissue.nodes.utils import extract_repo_owner, parse_result
-from beneissue.observability import get_node_logger
+from beneissue.observability import get_node_logger, traced_node
 from beneissue.prompts import load_prompt
 
 logger = get_node_logger("analyze")
@@ -86,7 +84,7 @@ def _run_analysis(
     ), usage
 
 
-@traceable(name="claude_code_analyze", run_type="llm")
+@traced_node("analyze", run_type="chain")
 def analyze_node(state: IssueState) -> dict:
     """Analyze an issue using Claude Code CLI."""
     # Dry-run mode: return mock data
@@ -141,19 +139,10 @@ def analyze_node(state: IssueState) -> dict:
 
             result, usage = _run_analysis(repo_path, prompt, verbose=verbose, repo_owner=repo_owner)
 
-    # Set usage on LangSmith run tree (prevents cost duplication in parent spans)
-    usage.set_on_run_tree()
-
-    # Add token usage to result for state storage
-    state_dict = usage.to_state_dict()
-    logger.info(
-        "[METRICS DEBUG] analyze_node returning usage_metadata: in_tokens=%d, out_tokens=%d, in_cost=%.6f, out_cost=%.6f",
-        state_dict.get("usage_metadata", {}).get("input_tokens", 0),
-        state_dict.get("usage_metadata", {}).get("output_tokens", 0),
-        state_dict.get("usage_metadata", {}).get("input_cost", 0.0),
-        state_dict.get("usage_metadata", {}).get("output_cost", 0.0),
-    )
-    return {**result, **state_dict}
+    # Return usage_metadata in state dict for DB storage only
+    # NOTE: Do NOT call set_on_run_tree() here - it causes cost duplication in LangSmith
+    # because LangSmith automatically aggregates child costs to parent spans
+    return {**result, **usage.to_state_dict()}
 
 
 def _build_result(response: AnalyzeResult, repo_owner: str | None = None) -> dict:

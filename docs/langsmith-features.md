@@ -32,17 +32,21 @@ def setup_langsmith():
 
 ## Applied Features
 
-### 1. @traceable Decorator
+### 1. @traced_node Decorator
 
-Traces node execution using LangSmith's `@traceable`.
+Traces node execution using the custom `@traced_node` decorator (wraps LangSmith's `@traceable`).
 
 ```python
-from langsmith import traceable
+from beneissue.observability import traced_node
 
-@traceable(name="claude_code_analyze", run_type="chain")
+@traced_node("analyze", run_type="chain")
 def analyze_node(state: IssueState) -> dict:
     ...
 ```
+
+**Important**: Always use `run_type="chain"` for nodes that call Claude Code SDK.
+Using `run_type="llm"` causes cost duplication because LangSmith automatically
+aggregates child costs to parent spans.
 
 ### 2. @traced_node Custom Decorator
 
@@ -83,7 +87,8 @@ Stderr logging visible in GitHub Actions.
 |------|-----------|----------|
 | `intake_node` | `@traced_node` | tool |
 | `triage_node` | `@traced_node` | chain |
-| `analyze_node` | `@traceable` | chain |
+| `analyze_node` | `@traced_node` | chain |
+| `fix_node` | `@traced_node` | chain |
 
 ## Viewing in LangSmith Dashboard
 
@@ -110,3 +115,18 @@ Stderr logging visible in GitHub Actions.
 ## Cost Tracking
 
 You can view per-project token usage and costs in the LangSmith dashboard. Using `enable_cache=True` during development reduces duplicate LLM calls and saves costs.
+
+### Cost Duplication Prevention
+
+Claude Code SDK calls (analyze/fix nodes) do NOT show costs directly in LangSmith traces because:
+
+1. The actual LLM calls happen inside the Claude Code SDK, which is not integrated with LangSmith
+2. Using `run_type="llm"` with `set_on_run_tree()` causes cost duplication (LangSmith aggregates child costs to parents)
+
+**Solution**: Use `run_type="chain"` and return `usage_metadata` in state dict only for database storage.
+
+To analyze cost data:
+```bash
+# Debug script for cost analysis
+source .env && python scripts/langsmith_cost_debug.py --project beneissue --limit 5
+```

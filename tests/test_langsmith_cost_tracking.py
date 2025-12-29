@@ -384,3 +384,51 @@ class TestCostDuplicationReproduction:
         result = chain_call()
         print("\n=== Fix Attempt: Explicit Zero Parent Cost ===")
         print("Check if setting zero usage on parent overrides accumulated cost")
+
+    @pytest.mark.skipif(
+        not _is_langsmith_configured(),
+        reason="Requires LANGCHAIN_API_KEY for LangSmith",
+    )
+    def test_fixed_approach_chain_only(self):
+        """Test the FIXED approach: use run_type="chain" and don't set usage on run tree.
+
+        This test simulates the fix applied to analyze_node and fix_node:
+        - Use @traced_node with run_type="chain" instead of @traceable(run_type="llm")
+        - Only return usage_metadata in state dict for DB storage
+        - Do NOT call set_on_run_tree()
+
+        Expected: No cost duplication because chain spans don't report LLM costs.
+        """
+        from beneissue.observability import traced_node
+
+        usage_metadata = {
+            "input_tokens": 30000,
+            "output_tokens": 2448,
+            "total_tokens": 32448,
+            "input_cost": 0.009,
+            "output_cost": 0.029283,
+        }
+
+        @traced_node("analyze_fixed", run_type="chain")
+        def analyze_fixed(state: dict) -> dict:
+            """Simulates the fixed analyze_node."""
+            # Just return usage_metadata in state dict - no set_on_run_tree()
+            return {
+                "analysis_summary": "Fixed approach test",
+                "usage_metadata": usage_metadata,
+            }
+
+        @traced_node("langgraph_fixed", run_type="chain")
+        def langgraph_fixed(state: dict) -> dict:
+            """Simulates LangGraph root."""
+            return analyze_fixed(state)
+
+        result = langgraph_fixed({})
+
+        print("\n=== FIXED Approach: Chain Only ===")
+        print("Check LangSmith dashboard for trace 'langgraph_fixed'")
+        print("Expected: No cost shown (chain spans don't track LLM costs)")
+        print("Cost should only be in DB storage via usage_metadata in state")
+
+        assert result["analysis_summary"] == "Fixed approach test"
+        assert result["usage_metadata"] == usage_metadata
