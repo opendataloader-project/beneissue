@@ -10,6 +10,7 @@ from claude_agent_sdk import (
     ResultMessage,
     query,
 )
+from langsmith import get_current_run_tree
 
 from beneissue.config import DEFAULT_CLAUDE_CODE_MODEL
 
@@ -116,29 +117,21 @@ class UsageInfo:
     def with_state(self, result: dict) -> dict:
         """Add usage_metadata to a result dict and return it.
 
-        DEPRECATED: This method previously called set_on_run_tree() which caused
-        cost duplication in LangSmith. Use to_state_dict() directly instead:
-            return {**result, **usage.to_state_dict()}
+        Also sets usage on the LangSmith run tree to prevent cost duplication.
         """
-        # NOTE: Do NOT call set_on_run_tree() - it causes cost duplication
-        # LangSmith automatically aggregates child costs to parent spans
+        self.set_on_run_tree()
         return {**result, **self.to_state_dict()}
 
     def set_on_run_tree(self) -> None:
         """Set usage metadata directly on the current LangSmith run tree.
 
-        DEPRECATED: Do not use this method - it causes cost duplication in LangSmith.
-        LangSmith automatically aggregates child span costs to parent spans.
-        When you set usage on a run_type="llm" span that's wrapped by chain spans,
-        the cost gets counted multiple times (once per parent level).
-
-        Instead, just return usage_metadata in the state dict for DB storage.
+        This is the correct way to track costs in LangSmith for run_type="llm".
+        Using get_current_run_tree().set() ensures costs are only counted once,
+        not accumulated up through parent spans.
         """
-        # Intentionally disabled to prevent cost duplication
-        # run_tree = get_current_run_tree()
-        # if run_tree:
-        #     run_tree.set(usage_metadata=self.to_langsmith_metadata())
-        pass
+        run_tree = get_current_run_tree()
+        if run_tree:
+            run_tree.set(usage_metadata=self.to_langsmith_metadata())
 
 
 @dataclass

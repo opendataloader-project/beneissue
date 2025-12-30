@@ -4,6 +4,8 @@ import os
 import secrets
 import tempfile
 
+from langsmith import traceable
+
 from beneissue.graph.state import IssueState
 from beneissue.integrations.claude_code import UsageInfo, run_claude_code
 from beneissue.integrations.git import (
@@ -14,15 +16,15 @@ from beneissue.integrations.git import (
     git_push,
     git_status,
 )
+from beneissue.mocks import load_mock
 from beneissue.integrations.github import (
     clone_repo,
     create_pull_request,
     get_analysis_comment,
 )
-from beneissue.mocks import load_mock
 from beneissue.nodes.schemas import FixResult
 from beneissue.nodes.utils import parse_result
-from beneissue.observability import get_node_logger, traced_node
+from beneissue.observability import get_node_logger
 from beneissue.prompts import load_prompt
 
 logger = get_node_logger("fix")
@@ -252,7 +254,7 @@ def _create_dry_run_pr(state: IssueState) -> tuple[bool, str | None, str | None]
         return result.success, result.url, result.error
 
 
-@traced_node("fix", run_type="chain")
+@traceable(name="claude_code_fix", run_type="llm")
 def fix_node(state: IssueState) -> dict:
     """Execute fix using Claude Code CLI."""
     # Dry-run mode: create empty PR for testing
@@ -297,33 +299,30 @@ def fix_node(state: IssueState) -> dict:
         fix_result, error, usage = _run_claude_code_fix(repo_path, prompt)
 
         if error:
-            # Return usage_metadata in state dict for DB storage only
-            # NOTE: Do NOT call set_on_run_tree() - it causes cost duplication in LangSmith
-            return {**error, **usage.to_state_dict()}
+            return usage.with_state(error)
 
         changes = git_status(repo_path)
         if not changes:
             logger.warning("No changes were made by Claude Code")
-            return {**_error_result("No changes were made"), **usage.to_state_dict()}
+            return usage.with_state(_error_result("No changes were made"))
 
         logger.debug("Changes detected:\n%s", changes)
 
         branch_name, error = _commit_and_push(repo_path, issue_number, fix_result)
         if error:
-            return {**error, **usage.to_state_dict()}
+            return usage.with_state(error)
 
         logger.info("Creating pull request...")
         pr_success, pr_url, pr_error = _create_pr(state, fix_result, branch_name)
 
         if pr_success and pr_url:
             logger.info("PR created: %s", pr_url)
-            return {
+            return usage.with_state({
                 "fix_success": True,
                 "pr_url": pr_url,
                 "labels_to_remove": ["fix/auto-eligible"],
                 "labels_to_add": ["fix/completed"],
-                **usage.to_state_dict(),
-            }
+            })
 
         logger.error("Failed to create PR: %s", pr_error)
-        return {**_error_result(pr_error or "Failed to create PR"), **usage.to_state_dict()}
+        return usage.with_state(_error_result(pr_error or "Failed to create PR"))
