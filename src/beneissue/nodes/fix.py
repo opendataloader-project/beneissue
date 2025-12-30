@@ -254,7 +254,11 @@ def _create_dry_run_pr(state: IssueState) -> tuple[bool, str | None, str | None]
         return result.success, result.url, result.error
 
 
-@traceable(name="claude_code_fix", run_type="llm")
+@traceable(
+    name="claude_code_fix",
+    run_type="llm",
+    metadata={"ls_provider": "anthropic", "ls_model_name": "claude-sonnet-4-5"},
+)
 def fix_node(state: IssueState) -> dict:
     """Execute fix using Claude Code CLI."""
     # Dry-run mode: create empty PR for testing

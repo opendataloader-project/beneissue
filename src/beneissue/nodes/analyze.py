@@ -85,7 +85,11 @@ def _run_analysis(
     ), usage
 
 
-@traceable(name="claude_code_analyze", run_type="llm")
+@traceable(
+    name="claude_code_analyze",
+    run_type="llm",
+    metadata={"ls_provider": "anthropic", "ls_model_name": "claude-sonnet-4-5"},
+)
 def analyze_node(state: IssueState) -> dict:
     """Analyze an issue using Claude Code CLI."""
     # Dry-run mode: return mock data

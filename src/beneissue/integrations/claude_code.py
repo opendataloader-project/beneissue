@@ -90,8 +90,6 @@ class UsageInfo:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "total_tokens": self.total_tokens,
-            "input_cost": self.input_cost_usd,
-            "output_cost": self.output_cost_usd,
         }
 
     def log_summary(self, logger) -> None:
