@@ -22,14 +22,26 @@ def route_after_triage(state: IssueState) -> str:
 
 
 def route_after_analyze(state: IssueState) -> str:
-    """Route after analyze node based on fix decision."""
-    match state.get("fix_decision"):
-        case "auto_eligible":
-            return "fix"
-        case "manual_required" | "comment_only":
-            return "post_comment"
-        case _:
-            return "apply_labels"
+    """Route after analyze node based on fix decision and command.
+
+    Fix only runs when:
+    1. fix_decision is "auto_eligible", AND
+    2. command is "fix" (explicit @beneissue fix approval)
+
+    This ensures auto-eligible issues still require human approval via @beneissue fix.
+    """
+    fix_decision = state.get("fix_decision")
+    command = state.get("command")
+
+    # Only proceed to fix if explicitly requested via @beneissue fix
+    if fix_decision == "auto_eligible" and command == "fix":
+        return "fix"
+
+    # All other cases: post comment or apply labels
+    if fix_decision in ("auto_eligible", "manual_required", "comment_only"):
+        return "post_comment"
+
+    return "apply_labels"
 
 
 def route_after_fix(state: IssueState) -> str:

@@ -58,9 +58,20 @@ class TestRouteAfterTriage:
 class TestRouteAfterAnalyze:
     """Tests for route_after_analyze function."""
 
-    def test_auto_eligible_goes_to_fix(self):
-        state = {"fix_decision": "auto_eligible"}
+    def test_auto_eligible_with_fix_command_goes_to_fix(self):
+        """auto_eligible + command=fix → fix (explicit approval)"""
+        state = {"fix_decision": "auto_eligible", "command": "fix"}
         assert route_after_analyze(state) == "fix"
+
+    def test_auto_eligible_without_fix_command_goes_to_post_comment(self):
+        """auto_eligible without command=fix → post_comment (awaiting approval)"""
+        state = {"fix_decision": "auto_eligible", "command": "run"}
+        assert route_after_analyze(state) == "post_comment"
+
+    def test_auto_eligible_with_no_command_goes_to_post_comment(self):
+        """auto_eligible with no command → post_comment"""
+        state = {"fix_decision": "auto_eligible"}
+        assert route_after_analyze(state) == "post_comment"
 
     def test_manual_required_goes_to_post_comment(self):
         state = {"fix_decision": "manual_required"}
