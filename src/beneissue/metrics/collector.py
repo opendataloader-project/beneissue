@@ -74,8 +74,6 @@ class MetricsCollector:
         result = {
             "input_tokens": usage.get("input_tokens", 0),
             "output_tokens": usage.get("output_tokens", 0),
-            "input_cost": usage.get("input_cost", 0.0),
-            "output_cost": usage.get("output_cost", 0.0),
         }
         logger.debug(
             "Extracted token fields: %s from usage_metadata: %s",

@@ -47,16 +47,10 @@ def _extract_usage_metadata(raw_response) -> dict:
     input_tokens = usage.get("input_tokens", 0)
     output_tokens = usage.get("output_tokens", 0)
 
-    # Calculate costs based on Haiku pricing ($0.25/M input, $1.25/M output)
-    input_cost = input_tokens * 0.25 / 1_000_000
-    output_cost = output_tokens * 1.25 / 1_000_000
-
     return {
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
-        "total_tokens": input_tokens + output_tokens,
-        "input_cost": input_cost,
-        "output_cost": output_cost,
+        "total_tokens": input_tokens + output_tokens
     }
 
 

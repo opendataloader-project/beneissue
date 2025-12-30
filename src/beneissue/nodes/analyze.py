@@ -146,11 +146,9 @@ def analyze_node(state: IssueState) -> dict:
     # Add token usage to result for state storage
     state_dict = usage.to_state_dict()
     logger.info(
-        "[METRICS DEBUG] analyze_node returning usage_metadata: in_tokens=%d, out_tokens=%d, in_cost=%.6f, out_cost=%.6f",
+        "[METRICS DEBUG] analyze_node returning usage_metadata: in_tokens=%d, out_tokens=%d",
         state_dict.get("usage_metadata", {}).get("input_tokens", 0),
         state_dict.get("usage_metadata", {}).get("output_tokens", 0),
-        state_dict.get("usage_metadata", {}).get("input_cost", 0.0),
-        state_dict.get("usage_metadata", {}).get("output_cost", 0.0),
     )
     return {**result, **state_dict}
 

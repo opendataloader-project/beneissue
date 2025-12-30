@@ -29,11 +29,11 @@ CREATE TABLE workflow_runs (
     pr_url VARCHAR(500),
     fix_error TEXT,
 
-    -- Token usage
+    -- Token usage (cost is calculated in frontend based on workflow_type)
+    -- triage: claude-haiku-4-5 ($1/MTok input, $5/MTok output)
+    -- analyze/fix: claude-sonnet-4-5 ($3/MTok input, $15/MTok output)
     input_tokens INTEGER DEFAULT 0,
     output_tokens INTEGER DEFAULT 0,
-    input_cost DECIMAL(10, 6) DEFAULT 0,
-    output_cost DECIMAL(10, 6) DEFAULT 0,
 
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

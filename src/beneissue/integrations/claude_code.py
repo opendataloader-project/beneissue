@@ -13,55 +13,20 @@ from claude_agent_sdk import (
 
 from beneissue.config import DEFAULT_CLAUDE_CODE_MODEL
 
-def estimate_cost_split(
-    total_cost_usd: float, input_tokens: int, output_tokens: int
-) -> tuple[float, float]:
-    """Estimate input/output cost split from total cost.
-
-    Claude Code SDK only provides total_cost, so we estimate the split
-    based on Anthropic's typical pricing ratio (~5:1 output:input for Sonnet).
-
-    Formula: total = input_tokens * P_in + output_tokens * P_out
-    With P_out = 5 * P_in: total = P_in * (input_tokens + 5 * output_tokens)
-
-    Args:
-        total_cost_usd: Total cost from Claude Code SDK
-        input_tokens: Number of input tokens
-        output_tokens: Number of output tokens
-
-    Returns:
-        Tuple of (input_cost_usd, output_cost_usd)
-    """
-    total_weighted = input_tokens + 5 * output_tokens
-    if total_weighted > 0 and total_cost_usd > 0:
-        cost_per_weighted = total_cost_usd / total_weighted
-        input_cost = input_tokens * cost_per_weighted
-        output_cost = output_tokens * 5 * cost_per_weighted
-    else:
-        input_cost = 0.0
-        output_cost = 0.0
-    return input_cost, output_cost
-
 
 @dataclass
 class UsageInfo:
-    """Token and cost usage information."""
+    """Token usage information."""
 
     input_tokens: int = 0
     output_tokens: int = 0
     cache_creation_tokens: int = 0
     cache_read_tokens: int = 0
-    input_cost_usd: float = 0.0
-    output_cost_usd: float = 0.0
     model: str = ""
 
     @property
     def total_tokens(self) -> int:
         return self.input_tokens + self.output_tokens
-
-    @property
-    def total_cost_usd(self) -> float:
-        return self.input_cost_usd + self.output_cost_usd
 
     def to_dict(self) -> dict:
         """Convert to dictionary for internal use."""
@@ -71,20 +36,15 @@ class UsageInfo:
             "cache_creation_tokens": self.cache_creation_tokens,
             "cache_read_tokens": self.cache_read_tokens,
             "total_tokens": self.total_tokens,
-            "input_cost": self.input_cost_usd,
-            "output_cost": self.output_cost_usd,
             "model": self.model,
         }
 
     def to_langsmith_metadata(self) -> dict:
         """Convert to LangSmith usage_metadata format for token tracking.
 
-        LangSmith expects input_cost/output_cost for proper cost attribution.
-        Without these, costs appear as "Other" in the dashboard.
-
         Note: Only includes keys allowed by LangSmith's validate_extracted_usage_metadata:
-        input_tokens, output_tokens, total_tokens, input_cost, output_cost, total_cost,
-        input_token_details, output_token_details, input_cost_details, output_cost_details.
+        input_tokens, output_tokens, total_tokens
+        input_token_details, output_token_details
         """
         return {
             "input_tokens": self.input_tokens,
@@ -98,8 +58,6 @@ class UsageInfo:
             "Claude Code usage: in=%d out=%d tokens, in=$%.4f out=$%.4f",
             self.input_tokens,
             self.output_tokens,
-            self.input_cost_usd,
-            self.output_cost_usd,
         )
 
     def with_metadata(self, result: dict) -> dict:
@@ -196,14 +154,6 @@ async def run_claude_code_async(
                         usage_info.output_tokens = message.usage.get("output_tokens", 0)
                         usage_info.cache_creation_tokens = cache_creation
                         usage_info.cache_read_tokens = cache_read
-
-                    # Estimate cost split from total_cost_usd
-                    total_cost = message.total_cost_usd or 0.0
-                    input_cost, output_cost = estimate_cost_split(
-                        total_cost, usage_info.input_tokens, usage_info.output_tokens
-                    )
-                    usage_info.input_cost_usd = input_cost
-                    usage_info.output_cost_usd = output_cost
 
         stdout = "\n".join(collected_output)
         return ClaudeCodeResult(

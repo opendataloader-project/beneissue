@@ -46,12 +46,8 @@ class TestWorkflowRunRecord:
             duplicate_of=None,
             input_tokens=1000,
             output_tokens=500,
-            input_cost=0.003,
-            output_cost=0.025,
         )
         assert record.triage_decision == "valid"
-        assert record.input_cost == pytest.approx(0.003)
-        assert record.output_cost == pytest.approx(0.025)
 
     def test_fix_record_with_all_fields(self):
         """Test creating a fix record with all fields."""
@@ -68,8 +64,6 @@ class TestWorkflowRunRecord:
             fix_error=None,
             input_tokens=5000,
             output_tokens=2000,
-            input_cost=0.015,
-            output_cost=0.100,
         )
         assert record.fix_success is True
         assert record.pr_url == "https://github.com/owner/repo/pull/456"
@@ -83,17 +77,12 @@ class TestWorkflowRunRecord:
             workflow_type="analyze",
             workflow_started_at=now,
             workflow_completed_at=now,
-            input_cost=0.003,
-            output_cost=0.025,
         )
         data = record.to_supabase_dict()
 
         assert data["repo"] == "owner/repo"
         assert data["issue_number"] == 123
         assert data["workflow_type"] == "analyze"
-        # Costs should be floats
-        assert isinstance(data["input_cost"], float)
-        assert isinstance(data["output_cost"], float)
         # Timestamps should be ISO format strings
         assert isinstance(data["workflow_started_at"], str)
         assert isinstance(data["workflow_completed_at"], str)
@@ -194,8 +183,6 @@ class TestMetricsCollector:
                 "input_tokens": 1000,
                 "output_tokens": 500,
                 "total_tokens": 1500,
-                "input_cost": 0.003,
-                "output_cost": 0.025,
             },
         }
 
@@ -207,8 +194,6 @@ class TestMetricsCollector:
         assert record.triage_decision == "valid"
         assert record.input_tokens == 1000
         assert record.output_tokens == 500
-        assert record.input_cost == pytest.approx(0.003)
-        assert record.output_cost == pytest.approx(0.025)
         # Analyze/fix fields should be None for triage step
         assert record.fix_decision is None
         assert record.fix_success is None

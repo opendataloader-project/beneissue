@@ -42,8 +42,6 @@ class WorkflowRunRecord(BaseModel):
     # Token usage
     input_tokens: int = 0
     output_tokens: int = 0
-    input_cost: float = 0.0
-    output_cost: float = 0.0
 
     def to_supabase_dict(self) -> dict:
         """Convert to dict for Supabase insert."""

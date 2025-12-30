@@ -100,9 +100,6 @@ SELECT AVG(first_response_seconds) FROM (
     WHERE issue_created_at IS NOT NULL
     GROUP BY repo, issue_number
 ) t;
-
--- 4. 총 AI 비용
-SELECT SUM(input_cost + output_cost) FROM workflow_runs;
 ```
 
 ---
