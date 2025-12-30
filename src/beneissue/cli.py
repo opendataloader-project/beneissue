@@ -743,7 +743,10 @@ def _run_test_case(test_case: dict, project_root: Path) -> dict:
     """Run a single test case and return result."""
     import logging
 
-    from beneissue.metrics.collector import record_metrics_node
+    from beneissue.metrics.collector import (
+        record_analyze_metrics_node,
+        record_triage_metrics_node,
+    )
     from beneissue.nodes.analyze import analyze_node
     from beneissue.nodes.triage import triage_node
 
@@ -852,7 +855,10 @@ def _run_test_case(test_case: dict, project_root: Path) -> dict:
                     }
 
         # Record metrics to Supabase (no_action mode is fine, we still record)
-        record_metrics_node(state)
+        if stage == "triage":
+            record_triage_metrics_node(state)
+        elif stage == "analyze":
+            record_analyze_metrics_node(state)
 
         return {"passed": True, "reason": ""}
 

@@ -55,7 +55,7 @@ class UsageInfo:
     def log_summary(self, logger) -> None:
         """Log usage summary."""
         logger.info(
-            "Claude Code usage: in=%d out=%d tokens, in=$%.4f out=$%.4f",
+            "Claude Code usage: in=%d out=%d tokens",
             self.input_tokens,
             self.output_tokens,
         )
