@@ -24,6 +24,10 @@ LABELS: dict[str, LabelDef] = {
     "fix/comment-only": LabelDef("C5DEF5", "No code change needed"),
     "fix/completed": LabelDef("6f42c1", "AI resolved without human intervention"),
     "fix/failed": LabelDef("d73a4a", "Auto-fix failed"),
+    # Issue types (assigned by analyze node)
+    "bug": LabelDef("d73a4a", "Something isn't working"),
+    "enhancement": LabelDef("a2eeef", "New feature or request"),
+    "documentation": LabelDef("0075ca", "Improvements or additions to documentation"),
 }
 
 
