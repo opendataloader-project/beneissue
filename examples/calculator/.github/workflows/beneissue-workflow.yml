@@ -45,7 +45,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  analyze:
+  process-issue:
     # Run on new or reopened issues
     if: github.event_name == 'issues'
     runs-on: ubuntu-latest
