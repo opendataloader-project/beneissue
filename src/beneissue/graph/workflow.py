@@ -16,7 +16,11 @@ from beneissue.graph.routing import (
     route_after_triage_test,
 )
 from beneissue.graph.state import IssueState
-from beneissue.metrics.collector import record_metrics_node
+from beneissue.metrics.collector import (
+    record_analyze_metrics_node,
+    record_fix_metrics_node,
+    record_triage_metrics_node,
+)
 from beneissue.nodes.actions import (
     apply_labels_node,
     limit_exceeded_node,
@@ -35,7 +39,7 @@ ANALYZE_CACHE_POLICY = CachePolicy(ttl=3600)
 
 
 def _build_triage_graph(*, enable_cache: bool = False) -> StateGraph:
-    """Build triage-only graph: intake → triage → apply_labels → record_metrics."""
+    """Build triage-only graph: intake → triage → record_triage_metrics → apply_labels."""
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
@@ -45,8 +49,8 @@ def _build_triage_graph(*, enable_cache: bool = False) -> StateGraph:
         triage_node,
         cache_policy=TRIAGE_CACHE_POLICY if enable_cache else None,
     )
+    workflow.add_node("record_triage_metrics", record_triage_metrics_node)
     workflow.add_node("apply_labels", apply_labels_node)
-    workflow.add_node("record_metrics", record_metrics_node)
 
     workflow.set_entry_point("intake")
 
@@ -61,9 +65,9 @@ def _build_triage_graph(*, enable_cache: bool = False) -> StateGraph:
     )
 
     workflow.add_edge("limit_exceeded", END)
-    workflow.add_edge("triage", "apply_labels")
-    workflow.add_edge("apply_labels", "record_metrics")
-    workflow.add_edge("record_metrics", END)
+    workflow.add_edge("triage", "record_triage_metrics")
+    workflow.add_edge("record_triage_metrics", "apply_labels")
+    workflow.add_edge("apply_labels", END)
 
     return workflow
 
@@ -85,7 +89,7 @@ def create_triage_workflow(
 
 
 def _build_analyze_graph(*, enable_cache: bool = False) -> StateGraph:
-    """Build analyze-only graph: intake → analyze → post_comment → apply_labels → record_metrics."""
+    """Build analyze-only graph: intake → analyze → record_analyze_metrics → post_comment → apply_labels."""
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
@@ -95,9 +99,9 @@ def _build_analyze_graph(*, enable_cache: bool = False) -> StateGraph:
         analyze_node,
         cache_policy=ANALYZE_CACHE_POLICY if enable_cache else None,
     )
-    workflow.add_node("apply_labels", apply_labels_node)
+    workflow.add_node("record_analyze_metrics", record_analyze_metrics_node)
     workflow.add_node("post_comment", post_comment_node)
-    workflow.add_node("record_metrics", record_metrics_node)
+    workflow.add_node("apply_labels", apply_labels_node)
 
     workflow.set_entry_point("intake")
 
@@ -113,11 +117,11 @@ def _build_analyze_graph(*, enable_cache: bool = False) -> StateGraph:
 
     workflow.add_edge("limit_exceeded", END)
 
-    # Always post comment after analyze
-    workflow.add_edge("analyze", "post_comment")
+    # Record metrics right after analyze, then post comment
+    workflow.add_edge("analyze", "record_analyze_metrics")
+    workflow.add_edge("record_analyze_metrics", "post_comment")
     workflow.add_edge("post_comment", "apply_labels")
-    workflow.add_edge("apply_labels", "record_metrics")
-    workflow.add_edge("record_metrics", END)
+    workflow.add_edge("apply_labels", END)
 
     return workflow
 
@@ -139,15 +143,15 @@ def create_analyze_workflow(
 
 
 def _build_fix_graph() -> StateGraph:
-    """Build fix-only graph: intake → fix → post_comment/apply_labels → record_metrics."""
+    """Build fix-only graph: intake → fix → record_fix_metrics → post_comment/apply_labels."""
     workflow = StateGraph(IssueState)
 
     workflow.add_node("intake", intake_node)
     workflow.add_node("limit_exceeded", limit_exceeded_node)
     workflow.add_node("fix", fix_node)
-    workflow.add_node("apply_labels", apply_labels_node)
+    workflow.add_node("record_fix_metrics", record_fix_metrics_node)
     workflow.add_node("post_comment", post_comment_node)
-    workflow.add_node("record_metrics", record_metrics_node)
+    workflow.add_node("apply_labels", apply_labels_node)
 
     workflow.set_entry_point("intake")
 
@@ -163,8 +167,11 @@ def _build_fix_graph() -> StateGraph:
 
     workflow.add_edge("limit_exceeded", END)
 
+    # Record metrics right after fix
+    workflow.add_edge("fix", "record_fix_metrics")
+
     workflow.add_conditional_edges(
-        "fix",
+        "record_fix_metrics",
         route_after_fix,
         {
             "apply_labels": "apply_labels",
@@ -173,8 +180,7 @@ def _build_fix_graph() -> StateGraph:
     )
 
     workflow.add_edge("post_comment", "apply_labels")
-    workflow.add_edge("apply_labels", "record_metrics")
-    workflow.add_edge("record_metrics", END)
+    workflow.add_edge("apply_labels", END)
 
     return workflow
 
@@ -191,7 +197,10 @@ def create_fix_workflow(
 
 
 def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
-    """Build the full graph with triage, analyze, fix, and actions."""
+    """Build the full graph with triage, analyze, fix, and actions.
+
+    Each step records its own metrics immediately after completion.
+    """
     workflow = StateGraph(IssueState)
 
     # Add all nodes (with optional caching for expensive LLM nodes)
@@ -202,15 +211,17 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
         triage_node,
         cache_policy=TRIAGE_CACHE_POLICY if enable_cache else None,
     )
+    workflow.add_node("record_triage_metrics", record_triage_metrics_node)
     workflow.add_node(
         "analyze",
         analyze_node,
         cache_policy=ANALYZE_CACHE_POLICY if enable_cache else None,
     )
+    workflow.add_node("record_analyze_metrics", record_analyze_metrics_node)
     workflow.add_node("fix", fix_node)
+    workflow.add_node("record_fix_metrics", record_fix_metrics_node)
     workflow.add_node("apply_labels", apply_labels_node)
     workflow.add_node("post_comment", post_comment_node)
-    workflow.add_node("record_metrics", record_metrics_node)
 
     # Define edges
     workflow.set_entry_point("intake")
@@ -227,9 +238,12 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
 
     workflow.add_edge("limit_exceeded", END)
 
-    # Conditional routing after triage
+    # Record triage metrics immediately after triage
+    workflow.add_edge("triage", "record_triage_metrics")
+
+    # Conditional routing after triage metrics
     workflow.add_conditional_edges(
-        "triage",
+        "record_triage_metrics",
         route_after_triage,
         {
             "analyze": "analyze",
@@ -237,9 +251,12 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
         },
     )
 
-    # Conditional routing after analyze
+    # Record analyze metrics immediately after analyze
+    workflow.add_edge("analyze", "record_analyze_metrics")
+
+    # Conditional routing after analyze metrics
     workflow.add_conditional_edges(
-        "analyze",
+        "record_analyze_metrics",
         route_after_analyze,
         {
             "fix": "fix",
@@ -248,9 +265,12 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
         },
     )
 
-    # Conditional routing after fix
+    # Record fix metrics immediately after fix
+    workflow.add_edge("fix", "record_fix_metrics")
+
+    # Conditional routing after fix metrics
     workflow.add_conditional_edges(
-        "fix",
+        "record_fix_metrics",
         route_after_fix,
         {
             "apply_labels": "apply_labels",
@@ -258,9 +278,8 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
         },
     )
 
-    # Terminal edges: apply_labels → record_metrics → END
-    workflow.add_edge("apply_labels", "record_metrics")
-    workflow.add_edge("record_metrics", END)
+    # Terminal edges
+    workflow.add_edge("apply_labels", END)
     workflow.add_edge("post_comment", "apply_labels")
 
     return workflow
@@ -289,7 +308,7 @@ def create_full_workflow(
 
 
 def _build_test_full_graph(*, enable_cache: bool = False) -> StateGraph:
-    """Build test graph: load_preset → triage → analyze → record_metrics → END.
+    """Build test graph: load_preset → triage → record_triage_metrics → analyze → record_analyze_metrics → END.
 
     This graph is designed for LangSmith Studio testing without GitHub dependencies.
     Uses configurable preset_name to load test cases from JSON files.
@@ -303,29 +322,31 @@ def _build_test_full_graph(*, enable_cache: bool = False) -> StateGraph:
         triage_node,
         cache_policy=TRIAGE_CACHE_POLICY if enable_cache else None,
     )
+    workflow.add_node("record_triage_metrics", record_triage_metrics_node)
     workflow.add_node(
         "analyze",
         analyze_node,
         cache_policy=ANALYZE_CACHE_POLICY if enable_cache else None,
     )
-    workflow.add_node("record_metrics", record_metrics_node)
+    workflow.add_node("record_analyze_metrics", record_analyze_metrics_node)
 
     # Define edges
     workflow.set_entry_point("load_preset")
     workflow.add_edge("load_preset", "triage")
+    workflow.add_edge("triage", "record_triage_metrics")
 
-    # Conditional routing: valid → analyze, else → record_metrics → END
+    # Conditional routing: valid → analyze, else → END
     workflow.add_conditional_edges(
-        "triage",
+        "record_triage_metrics",
         route_after_triage_test,
         {
             "analyze": "analyze",
-            END: "record_metrics",
+            END: END,
         },
     )
 
-    workflow.add_edge("analyze", "record_metrics")
-    workflow.add_edge("record_metrics", END)
+    workflow.add_edge("analyze", "record_analyze_metrics")
+    workflow.add_edge("record_analyze_metrics", END)
 
     return workflow
 

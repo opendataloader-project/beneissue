@@ -1,12 +1,12 @@
 -- Beneissue Metrics Tables
 -- Run this in Supabase SQL Editor
 
--- workflow_runs: 각 워크플로우 실행 기록
+-- workflow_runs: Per-step execution records (separate record for each triage, analyze, fix step)
 CREATE TABLE workflow_runs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     repo VARCHAR(255) NOT NULL,
     issue_number INTEGER NOT NULL,
-    workflow_type VARCHAR(20) NOT NULL,  -- triage/analyze/fix/full
+    workflow_type VARCHAR(20) NOT NULL,  -- triage/analyze/fix (one record per step)
 
     -- Timestamps
     issue_created_at TIMESTAMPTZ,
@@ -48,10 +48,10 @@ CREATE INDEX idx_workflow_runs_repo_issue_started ON workflow_runs(repo, issue_n
 -- Row Level Security
 ALTER TABLE workflow_runs ENABLE ROW LEVEL SECURITY;
 
--- 공개 읽기 허용
+-- Allow public read access
 CREATE POLICY "Allow public read" ON workflow_runs
     FOR SELECT USING (true);
 
--- service_role만 쓰기 허용 (Python에서 service_key 사용)
+-- Allow write only for service_role (Python uses service_key)
 CREATE POLICY "Allow service write" ON workflow_runs
     FOR INSERT WITH CHECK (auth.role() = 'service_role');

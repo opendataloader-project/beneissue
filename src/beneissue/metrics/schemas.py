@@ -7,12 +7,12 @@ from pydantic import BaseModel, Field
 
 
 class WorkflowRunRecord(BaseModel):
-    """Record of a single workflow execution."""
+    """Record of a single step execution (triage, analyze, or fix)."""
 
     # Identification
     repo: str
     issue_number: int
-    workflow_type: Literal["triage", "analyze", "fix", "full"]
+    workflow_type: Literal["triage", "analyze", "fix"]
 
     # Timestamps
     issue_created_at: Optional[datetime] = None

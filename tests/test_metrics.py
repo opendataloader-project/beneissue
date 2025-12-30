@@ -5,7 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from beneissue.metrics.collector import MetricsCollector, record_metrics_node
+from beneissue.metrics.collector import (
+    MetricsCollector,
+    record_analyze_metrics_node,
+    record_fix_metrics_node,
+    record_triage_metrics_node,
+)
 from beneissue.metrics.schemas import WorkflowRunRecord
 from beneissue.metrics.storage import MetricsStorage
 
@@ -26,35 +31,48 @@ class TestWorkflowRunRecord:
         assert record.issue_number == 123
         assert record.workflow_type == "triage"
 
-    def test_full_record(self):
-        """Test creating a record with all fields."""
+    def test_triage_record_with_all_fields(self):
+        """Test creating a triage record with all fields."""
         now = datetime.now(timezone.utc)
         record = WorkflowRunRecord(
             repo="owner/repo",
             issue_number=123,
-            workflow_type="full",
+            workflow_type="triage",
             issue_created_at=now,
             workflow_started_at=now,
             workflow_completed_at=now,
             triage_decision="valid",
             triage_reason="Valid bug report",
             duplicate_of=None,
-            fix_decision="auto_eligible",
-            priority="P1",
-            story_points=2,
-            assignee="dev1",
-            fix_success=True,
-            pr_url="https://github.com/owner/repo/pull/456",
-            fix_error=None,
             input_tokens=1000,
             output_tokens=500,
             input_cost=0.003,
             output_cost=0.025,
         )
         assert record.triage_decision == "valid"
-        assert record.fix_success is True
         assert record.input_cost == pytest.approx(0.003)
         assert record.output_cost == pytest.approx(0.025)
+
+    def test_fix_record_with_all_fields(self):
+        """Test creating a fix record with all fields."""
+        now = datetime.now(timezone.utc)
+        record = WorkflowRunRecord(
+            repo="owner/repo",
+            issue_number=123,
+            workflow_type="fix",
+            issue_created_at=now,
+            workflow_started_at=now,
+            workflow_completed_at=now,
+            fix_success=True,
+            pr_url="https://github.com/owner/repo/pull/456",
+            fix_error=None,
+            input_tokens=5000,
+            output_tokens=2000,
+            input_cost=0.015,
+            output_cost=0.100,
+        )
+        assert record.fix_success is True
+        assert record.pr_url == "https://github.com/owner/repo/pull/456"
 
     def test_to_supabase_dict(self):
         """Test conversion to Supabase-compatible dict."""
@@ -161,52 +179,14 @@ class TestMetricsStorage:
 class TestMetricsCollector:
     """Tests for MetricsCollector."""
 
-    def test_detect_workflow_type_from_command(self):
-        """Test workflow type detection from command field."""
-        collector = MetricsCollector()
-
-        state = {"command": "triage"}
-        assert collector._detect_workflow_type(state) == "triage"
-
-        state = {"command": "analyze"}
-        assert collector._detect_workflow_type(state) == "analyze"
-
-        state = {"command": "fix"}
-        assert collector._detect_workflow_type(state) == "fix"
-
-    def test_detect_workflow_type_from_state(self):
-        """Test workflow type detection from state contents."""
-        collector = MetricsCollector()
-
-        # Triage only
-        state = {"triage_decision": "valid"}
-        assert collector._detect_workflow_type(state) == "triage"
-
-        # Analyze (has fix_decision)
-        state = {"triage_decision": "valid", "fix_decision": "auto_eligible"}
-        assert collector._detect_workflow_type(state) == "analyze"
-
-        # Fix only
-        state = {"fix_success": True}
-        assert collector._detect_workflow_type(state) == "fix"
-
-        # Full (all present)
-        state = {
-            "triage_decision": "valid",
-            "fix_decision": "auto_eligible",
-            "fix_success": True,
-        }
-        assert collector._detect_workflow_type(state) == "full"
-
-    def test_state_to_record(self):
-        """Test conversion of IssueState to WorkflowRunRecord."""
+    def test_state_to_record_triage(self):
+        """Test conversion of IssueState to WorkflowRunRecord for triage step."""
         collector = MetricsCollector()
         now = datetime.now(timezone.utc)
 
         state = {
             "repo": "owner/repo",
             "issue_number": 123,
-            "command": "triage",
             "workflow_started_at": now,
             "triage_decision": "valid",
             "triage_reason": "Valid bug report",
@@ -219,7 +199,7 @@ class TestMetricsCollector:
             },
         }
 
-        record = collector._state_to_record(state)
+        record = collector._state_to_record(state, "triage")
 
         assert record.repo == "owner/repo"
         assert record.issue_number == 123
@@ -229,35 +209,107 @@ class TestMetricsCollector:
         assert record.output_tokens == 500
         assert record.input_cost == pytest.approx(0.003)
         assert record.output_cost == pytest.approx(0.025)
+        # Analyze/fix fields should be None for triage step
+        assert record.fix_decision is None
+        assert record.fix_success is None
+
+    def test_state_to_record_analyze(self):
+        """Test conversion of IssueState to WorkflowRunRecord for analyze step."""
+        collector = MetricsCollector()
+        now = datetime.now(timezone.utc)
+
+        state = {
+            "repo": "owner/repo",
+            "issue_number": 123,
+            "workflow_started_at": now,
+            "triage_decision": "valid",  # From earlier triage step
+            "fix_decision": "auto_eligible",
+            "priority": "P1",
+            "story_points": 2,
+            "assignee": "dev1",
+            "usage_metadata": {
+                "input_tokens": 5000,
+                "output_tokens": 1000,
+            },
+        }
+
+        record = collector._state_to_record(state, "analyze")
+
+        assert record.workflow_type == "analyze"
+        assert record.fix_decision == "auto_eligible"
+        assert record.priority == "P1"
+        # Triage fields should be None for analyze step
+        assert record.triage_decision is None
+        # Fix fields should be None for analyze step
+        assert record.fix_success is None
+
+    def test_state_to_record_fix(self):
+        """Test conversion of IssueState to WorkflowRunRecord for fix step."""
+        collector = MetricsCollector()
+        now = datetime.now(timezone.utc)
+
+        state = {
+            "repo": "owner/repo",
+            "issue_number": 123,
+            "workflow_started_at": now,
+            "fix_success": True,
+            "pr_url": "https://github.com/owner/repo/pull/456",
+            "usage_metadata": {
+                "input_tokens": 10000,
+                "output_tokens": 3000,
+            },
+        }
+
+        record = collector._state_to_record(state, "fix")
+
+        assert record.workflow_type == "fix"
+        assert record.fix_success is True
+        assert record.pr_url == "https://github.com/owner/repo/pull/456"
+        # Triage/analyze fields should be None for fix step
+        assert record.triage_decision is None
+        assert record.fix_decision is None
 
 
-class TestRecordMetricsNode:
-    """Tests for record_metrics_node LangGraph node."""
+class TestRecordMetricsNodes:
+    """Tests for step-level record metrics nodes."""
 
-    def test_skips_on_dry_run(self):
-        """Test node skips recording on dry_run mode."""
+    def test_triage_skips_on_dry_run(self):
+        """Test triage node skips recording on dry_run mode."""
         state = {"dry_run": True, "repo": "owner/repo", "issue_number": 123}
-        result = record_metrics_node(state)
+        result = record_triage_metrics_node(state)
+        assert result == {}
+
+    def test_analyze_skips_on_dry_run(self):
+        """Test analyze node skips recording on dry_run mode."""
+        state = {"dry_run": True, "repo": "owner/repo", "issue_number": 123}
+        result = record_analyze_metrics_node(state)
+        assert result == {}
+
+    def test_fix_skips_on_dry_run(self):
+        """Test fix node skips recording on dry_run mode."""
+        state = {"dry_run": True, "repo": "owner/repo", "issue_number": 123}
+        result = record_fix_metrics_node(state)
         assert result == {}
 
     def test_records_on_no_action(self):
         """Test node still records metrics on no_action mode (no_action only skips GitHub actions)."""
         with patch("beneissue.metrics.collector.get_collector") as mock_get_collector:
             mock_collector = MagicMock()
-            mock_collector.record_workflow.return_value = "test-uuid"
+            mock_collector.record_step.return_value = "test-uuid"
             mock_get_collector.return_value = mock_collector
 
             state = {"no_action": True, "repo": "owner/repo", "issue_number": 123}
-            result = record_metrics_node(state)
+            result = record_triage_metrics_node(state)
 
-            assert result == {}
-            mock_collector.record_workflow.assert_called_once_with(state)
+            # Returns empty usage_metadata to clear for next step
+            assert result == {"usage_metadata": {}}
+            mock_collector.record_step.assert_called_once_with(state, "triage")
 
     @patch("beneissue.metrics.collector.get_collector")
-    def test_records_metrics(self, mock_get_collector):
-        """Test node records metrics when configured."""
+    def test_records_triage_metrics(self, mock_get_collector):
+        """Test triage node records metrics when configured."""
         mock_collector = MagicMock()
-        mock_collector.record_workflow.return_value = "test-uuid"
+        mock_collector.record_step.return_value = "test-uuid"
         mock_get_collector.return_value = mock_collector
 
         state = {
@@ -265,10 +317,44 @@ class TestRecordMetricsNode:
             "issue_number": 123,
             "triage_decision": "valid",
         }
-        result = record_metrics_node(state)
+        result = record_triage_metrics_node(state)
 
-        assert result == {}
-        mock_collector.record_workflow.assert_called_once_with(state)
+        assert result == {"usage_metadata": {}}
+        mock_collector.record_step.assert_called_once_with(state, "triage")
+
+    @patch("beneissue.metrics.collector.get_collector")
+    def test_records_analyze_metrics(self, mock_get_collector):
+        """Test analyze node records metrics when configured."""
+        mock_collector = MagicMock()
+        mock_collector.record_step.return_value = "test-uuid"
+        mock_get_collector.return_value = mock_collector
+
+        state = {
+            "repo": "owner/repo",
+            "issue_number": 123,
+            "fix_decision": "auto_eligible",
+        }
+        result = record_analyze_metrics_node(state)
+
+        assert result == {"usage_metadata": {}}
+        mock_collector.record_step.assert_called_once_with(state, "analyze")
+
+    @patch("beneissue.metrics.collector.get_collector")
+    def test_records_fix_metrics(self, mock_get_collector):
+        """Test fix node records metrics when configured."""
+        mock_collector = MagicMock()
+        mock_collector.record_step.return_value = "test-uuid"
+        mock_get_collector.return_value = mock_collector
+
+        state = {
+            "repo": "owner/repo",
+            "issue_number": 123,
+            "fix_success": True,
+        }
+        result = record_fix_metrics_node(state)
+
+        assert result == {"usage_metadata": {}}
+        mock_collector.record_step.assert_called_once_with(state, "fix")
 
 
 def _is_supabase_configured() -> bool:
