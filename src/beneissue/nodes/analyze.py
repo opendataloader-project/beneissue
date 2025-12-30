@@ -139,9 +139,6 @@ def analyze_node(state: IssueState) -> dict:
 
             result, usage = _run_analysis(repo_path, prompt, repo_owner=repo_owner)
 
-    # Set usage on LangSmith run tree (prevents cost duplication in parent spans)
-    usage.set_on_run_tree()
-
     # Add token usage to result for state storage
     state_dict = usage.to_state_dict()
     logger.info(

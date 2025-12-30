@@ -10,7 +10,6 @@ from claude_agent_sdk import (
     ResultMessage,
     query,
 )
-from langsmith import get_current_run_tree
 
 from beneissue.config import DEFAULT_CLAUDE_CODE_MODEL
 
@@ -115,23 +114,8 @@ class UsageInfo:
         return {"usage_metadata": self.to_langsmith_metadata()}
 
     def with_state(self, result: dict) -> dict:
-        """Add usage_metadata to a result dict and return it.
-
-        Also sets usage on the LangSmith run tree to prevent cost duplication.
-        """
-        self.set_on_run_tree()
+        """Add usage_metadata to a result dict and return it."""
         return {**result, **self.to_state_dict()}
-
-    def set_on_run_tree(self) -> None:
-        """Set usage metadata directly on the current LangSmith run tree.
-
-        This is the correct way to track costs in LangSmith for run_type="llm".
-        Using get_current_run_tree().set() ensures costs are only counted once,
-        not accumulated up through parent spans.
-        """
-        run_tree = get_current_run_tree()
-        if run_tree:
-            run_tree.set(usage_metadata=self.to_langsmith_metadata())
 
 
 @dataclass
