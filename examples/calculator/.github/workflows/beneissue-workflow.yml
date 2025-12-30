@@ -58,7 +58,7 @@ jobs:
           langchain-project: ${{ vars.LANGCHAIN_PROJECT }}
           supabase-url: ${{ secrets.SUPABASE_URL }}
           supabase-service-key: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          command: analyze
+          command: run
 
   on-command:
     # Run on @beneissue commands in comments

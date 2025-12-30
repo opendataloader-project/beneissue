@@ -29,7 +29,7 @@ inputs:
   command:
     description: 'Command to run (triage, analyze, fix, run, check)'
     required: false
-    default: 'triage'
+    default: 'run'
   issue-number:
     description: 'Issue number to process (defaults to event issue)'
     required: false
