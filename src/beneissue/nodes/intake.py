@@ -1,5 +1,7 @@
 """Intake node - fetches issue from GitHub."""
 
+from datetime import datetime, timezone
+
 from beneissue.config import load_config
 from beneissue.graph.state import IssueState
 from beneissue.integrations.github import (
@@ -19,8 +21,11 @@ def intake_node(state: IssueState) -> dict:
 
     log_node_event("intake", f"Fetching issue #{issue_number} from {repo}")
 
+    # Record workflow start time for metrics
+    result = {"workflow_started_at": datetime.now(timezone.utc)}
+
     # Fetch issue details
-    result = get_issue(repo, issue_number)
+    result.update(get_issue(repo, issue_number))
 
     # Fetch existing issues for duplicate detection
     try:
