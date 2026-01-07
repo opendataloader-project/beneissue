@@ -100,15 +100,29 @@ def post_comment_node(state: IssueState) -> dict:
     # Add triage info if invalid/duplicate/needs_info
     triage_decision = state.get("triage_decision")
     if triage_decision and triage_decision != "valid":
-        comment_parts.append(f"**Triage Decision:** {triage_decision}")
-        comment_parts.append(f"**Reason:** {state.get('triage_reason', 'N/A')}")
-        if state.get("duplicate_of"):
-            comment_parts.append(f"**Duplicate of:** #{state['duplicate_of']}")
-        # Add questions for needs_info decision
-        if triage_decision == "needs_info" and state.get("triage_questions"):
-            comment_parts.append("\n**Please provide the following information:**")
-            for question in state["triage_questions"]:
-                comment_parts.append(f"- {question}")
+        if triage_decision == "needs_info":
+            # Friendly needs_info comment with reason and checklist
+            comment_parts.append("Thanks for reporting this!")
+            comment_parts.append(state.get("triage_reason", "We need a bit more information."))
+            comment_parts.append("")
+            comment_parts.append(
+                "To help us investigate, "
+                "please share any of the following if possible:"
+            )
+            comment_parts.append("")
+            comment_parts.append("- A sample file that reproduces the issue")
+            comment_parts.append("- The code snippet you used")
+            comment_parts.append("- Expected vs actual results")
+            comment_parts.append("")
+            comment_parts.append(
+                "*Not all items are required — "
+                "any additional context you can provide is appreciated!*"
+            )
+        else:
+            comment_parts.append(f"**Triage Decision:** {triage_decision}")
+            comment_parts.append(f"**Reason:** {state.get('triage_reason', 'N/A')}")
+            if state.get("duplicate_of"):
+                comment_parts.append(f"**Duplicate of:** #{state['duplicate_of']}")
 
     # Add analysis summary if available
     if state.get("analysis_summary"):
