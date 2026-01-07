@@ -15,7 +15,10 @@ def route_after_triage(state: IssueState) -> str:
     match state.get("triage_decision"):
         case "valid":
             return "analyze"
-        case "invalid" | "duplicate" | "needs_info":
+        case "needs_info":
+            # needs_info requires posting questions as a comment
+            return "post_comment"
+        case "invalid" | "duplicate":
             return "apply_labels"
         case _:
             return "apply_labels"

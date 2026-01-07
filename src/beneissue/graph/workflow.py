@@ -248,6 +248,7 @@ def _build_full_graph(*, enable_cache: bool = False) -> StateGraph:
         {
             "analyze": "analyze",
             "apply_labels": "apply_labels",
+            "post_comment": "post_comment",
         },
     )
 

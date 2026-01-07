@@ -104,6 +104,11 @@ def post_comment_node(state: IssueState) -> dict:
         comment_parts.append(f"**Reason:** {state.get('triage_reason', 'N/A')}")
         if state.get("duplicate_of"):
             comment_parts.append(f"**Duplicate of:** #{state['duplicate_of']}")
+        # Add questions for needs_info decision
+        if triage_decision == "needs_info" and state.get("triage_questions"):
+            comment_parts.append("\n**Please provide the following information:**")
+            for question in state["triage_questions"]:
+                comment_parts.append(f"- {question}")
 
     # Add analysis summary if available
     if state.get("analysis_summary"):

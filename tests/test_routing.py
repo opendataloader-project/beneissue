@@ -42,9 +42,9 @@ class TestRouteAfterTriage:
         state = {"triage_decision": "duplicate"}
         assert route_after_triage(state) == "apply_labels"
 
-    def test_needs_info_goes_to_apply_labels(self):
+    def test_needs_info_goes_to_post_comment(self):
         state = {"triage_decision": "needs_info"}
-        assert route_after_triage(state) == "apply_labels"
+        assert route_after_triage(state) == "post_comment"
 
     def test_unknown_goes_to_apply_labels(self):
         state = {"triage_decision": "unknown"}
