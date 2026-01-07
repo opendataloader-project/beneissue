@@ -1,0 +1,14 @@
+{
+  "name": "Manual required - external API integration needed",
+  "stage": "analyze",
+  "description": "Issue requiring external service setup should be manual_required",
+  "input": {
+    "title": "Add rate limiting with Redis",
+    "body": "## Description\nWe need to add rate limiting to our calculator API to prevent abuse.\n\n## Requirements\n- Use Redis for distributed rate limiting\n- Limit to 100 requests per minute per IP\n- Return 429 status when limit exceeded\n\n## Notes\n- Redis server needs to be provisioned\n- Need to decide on Redis hosting (AWS ElastiCache vs self-hosted)\n- Credentials will need to be configured in production"
+  },
+  "expected": {
+    "decision": "valid",
+    "fix_decision": "manual_required",
+    "assignee": "dev-john"
+  }
+}

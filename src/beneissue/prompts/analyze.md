@@ -12,10 +12,10 @@ Analyze GitHub issue and determine fix approach.
 - Yes → Step 2
 
 ### Step 2: Auto-fix eligible? (ALL must be true)
-- [ ] affected_files ≤ 3
-- [ ] Testable (existing tests or clear verification)
-- [ ] Uses existing patterns (no new architecture)
-- [ ] No security/auth code changes
+- [ ] Self-contained: No external service setup or credential creation needed
+- [ ] Requirements clear: Issue describes what to do (not just the problem)
+- [ ] Single-session: No iterative human feedback loops required
+- [ ] Accessible: All affected code is in this repository
 
 All true → **auto_eligible**, otherwise → **manual_required**
 
